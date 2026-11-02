@@ -20,11 +20,12 @@ public partial class MainWindow
     }
 
     /// <param name="session">Pasta de uma sessão de jogo gravada (copiada para claude\sessao), ou null para só o PC e os testes.</param>
-    private async Task OpenClaudeAsync(string? session)
+    /// <param name="previous">Sessão anterior do mesmo jogo, para comparar (copiada para claude\sessao_anterior).</param>
+    private async Task OpenClaudeAsync(string? session, string? previous = null)
     {
         var ok = MessageBox.Show(this,
             "O RESET EXPLODE vai salvar os dados do PC (sistema, sensores, discos e o registro dos testes)" +
-            (session != null ? " e a sessão de jogo escolhida" : "") + " e abrir o Claude Code " +
+            (session != null ? (previous != null ? " e as duas sessões de jogo comparadas" : " e a sessão de jogo escolhida") : "") + " e abrir o Claude Code " +
             "num terminal para a IA analisar. Os dados só são enviados à Anthropic se você usar o Claude Code; números de série, " +
             "nome do computador e nome de usuário ficam de fora.\n\nNa primeira vez, faça o login com a sua conta do Claude no terminal.\n\nContinuar?",
             "Analisar com Claude", MessageBoxButton.YesNo, MessageBoxImage.Question);
@@ -33,13 +34,8 @@ public partial class MainWindow
         try
         {
             Directory.CreateDirectory(ClaudeFolder);
-            string sessionDir = Path.Combine(ClaudeFolder, "sessao");
-            if (Directory.Exists(sessionDir)) Directory.Delete(sessionDir, true);
-            if (session != null)
-            {
-                Directory.CreateDirectory(sessionDir);
-                foreach (var f in Directory.GetFiles(session)) File.Copy(f, Path.Combine(sessionDir, Path.GetFileName(f)));
-            }
+            CopySession(session, Path.Combine(ClaudeFolder, "sessao"));
+            CopySession(session != null ? previous : null, Path.Combine(ClaudeFolder, "sessao_anterior"));
             var data = await BuildReportDataAsync("PC");
             // shortcut: troca por texto o nome do PC e do usuário (aparece em caminhos como C:\Users\<nome>); trocar por filtro por campo se aparecerem outros dados pessoais.
             string json = Anonymize(ReportBuilder.Json(data));
@@ -50,9 +46,11 @@ public partial class MainWindow
             await File.WriteAllTextAsync(Path.Combine(ClaudeFolder, "registro-testes.txt"), log.Length > 0 ? log : "(nenhum teste rodado nesta sessão)", utf8);
             await File.WriteAllTextAsync(Path.Combine(ClaudeFolder, "CLAUDE.md"), Instructions, utf8);
             string script = Path.Combine(ClaudeFolder, "abrir-claude.cmd");
-            string prompt = session != null
-                ? "Analise a sessao de jogo da pasta sessao seguindo o CLAUDE.md. Comece pelo que atrapalhou o desempenho."
-                : "Analise os dados deste PC seguindo o CLAUDE.md. Comece pelo que parece errado.";
+            string prompt = session == null
+                ? "Analise os dados deste PC seguindo o CLAUDE.md. Comece pelo que parece errado."
+                : previous == null
+                    ? "Analise a sessao de jogo da pasta sessao seguindo o CLAUDE.md. Comece pelo que atrapalhou o desempenho."
+                    : "Compare a sessao de jogo da pasta sessao_anterior com a da pasta sessao seguindo o CLAUDE.md. Diga o que melhorou, o que piorou e por que.";
             await File.WriteAllTextAsync(script, LauncherScript.Replace("{PROMPT}", prompt).ReplaceLineEndings("\r\n"), utf8); // cmd.exe espera CRLF
 
             // Sem administrador: o Claude Code roda comandos, e não deve herdar o privilégio do RESET EXPLODE.
@@ -62,6 +60,15 @@ public partial class MainWindow
         {
             MessageBox.Show(this, "Não foi possível abrir o Claude Code:\n" + ex.Message, "Analisar com Claude", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
+    }
+
+    /// <summary>Substitui a pasta de destino pela cópia da sessão (ou só apaga, se não houver sessão).</summary>
+    private static void CopySession(string? from, string to)
+    {
+        if (Directory.Exists(to)) Directory.Delete(to, true);
+        if (from == null) return;
+        Directory.CreateDirectory(to);
+        foreach (var f in Directory.GetFiles(from)) File.Copy(f, Path.Combine(to, Path.GetFileName(f)));
     }
 
     private static string Anonymize(string text)
@@ -108,14 +115,24 @@ public partial class MainWindow
         - `registro-testes.txt`: registro do stress test e do teste de refrigeração desta sessão, com os vereditos.
 
         - `sessao/` (só quando o usuário escolheu uma sessão de jogo na aba Sessões):
-          - `resumo.json`: jogo, duração, FPS médio, 1% e 0,1% low, percentis de frametime, engasgos, % do tempo por limitador
-            (Gpu, Cpu, Vram, Ram, Thermal, Capped = nada no limite: trava de FPS/V-Sync/menu), temperaturas máximas, erros de hardware.
-          - `frames.csv`: TODO frame (t_ms desde o início, frametime_ms). Pode ter milhões de linhas: use um script
-            (PowerShell ou Python) para calcular, não leia inteiro.
-          - `sensores.csv`: uma linha por segundo com FPS, limitador, P-state e PerfCap da GPU, CPU/RAM/threads do processo do jogo
-            e TODOS os sensores (colunas "Hardware | Sensor (unidade)").
+          - `laudo.txt`: diagnóstico automático do RESET EXPLODE (sem IA). Comece por ele e confira com os dados.
+          - `resumo.json`: jogo, duração, FPS médio, 1% e 0,1% low, percentis de frametime, engasgos, % do tempo por limitador,
+            temperaturas máximas, erros de hardware, "exibicao" (PresentMon), "rede", "mouse", processos mais pesados, avisos e "laudo".
+          - `contexto.json`: configuração no início da sessão (RAM por pente, XMP, PCIe, ReBAR, monitor/Hz/conexão, plano de energia,
+            ajustes ligados do RESET OTIMIZA, disco do jogo, último teste de mouse/teclado).
+          - `sensores.csv`: 1 linha por segundo (t_s): FPS, limitador, P-state/PerfCap da GPU, CPU/RAM/E/S/threads do jogo, GPU e VRAM
+            do jogo e dos outros programas, pings (roteador, 1.1.1.1, servidor do jogo), tráfego do jogo, mouse_hz e TODOS os sensores
+            (colunas "Hardware | Sensor (unidade)").
+          - `exibicao.csv`: 1 linha por segundo do PresentMon (mesmo t_s): FPS exibido, descartados, latência até a tela, latência do
+            PC (Reflex), clique até a imagem, CPU/GPU ocupadas por frame, gargalo (GPU/CPU/Trava), modo de apresentação, tearing.
+          - `frames.csv`: TODO frame (t_ms, frametime_ms). `presentmon.csv.gz`: TODO frame com todas as colunas do PresentMon
+            (comprimido). Podem ter milhões de linhas: use um script (PowerShell ou Python) para calcular, não leia inteiro.
           - `eventos.csv`: engasgos, alt-tab (segundo_plano/primeiro_plano), limitador térmico da GPU, CPU acima de 95 °C.
-          Cruze os momentos ruins (engasgos, quedas de FPS) com o que os sensores mostravam naquele segundo para achar a causa.
+          - `processos.csv`: a cada 5 s, os programas que mais usaram CPU/GPU fora do jogo.
+          Cruze os momentos ruins (engasgos, quedas de FPS) com o que os sensores e processos mostravam naquele segundo.
+        - `sessao_anterior/` (só em comparações): a sessão anterior do mesmo jogo, com os mesmos arquivos. Compare os números e
+          o que mudou entre os dois `contexto.json` (ajustes, driver, Hz, RAM) para dizer o que causou a diferença. Sessões de
+          durações ou trechos muito diferentes do jogo não são comparáveis: avise.
 
         ## Como responder
         - Português do Brasil, linguagem simples; o usuário não é técnico.

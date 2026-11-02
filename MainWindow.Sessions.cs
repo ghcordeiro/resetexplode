@@ -202,6 +202,7 @@ public partial class MainWindow
             extra["resets_driver_video"] = errors.GpuResets;
             extra["ultimo_erro_hardware"] = errors.LastDetail;
             var sum = s.Finish(reason, extra);
+            try { SessionAnalyzer.Run(s.Folder); } catch { }
             try { SessionStore.Prune(); } catch { }
             return sum;
         }
@@ -261,10 +262,48 @@ public partial class MainWindow
         RefreshSessionList();
     }
 
-    private async void SessClaude_Click(object sender, RoutedEventArgs e)
+    // ---- painel do laudo (uma sessão por vez) e comparação com a anterior do mesmo jogo ----
+
+    private SessionStore.Item? _detail, _compareWith;
+
+    private async void SessLaudo_Click(object sender, RoutedEventArgs e)
     {
         if ((sender as FrameworkElement)?.Tag is not SessionStore.Item i) return;
-        await OpenClaudeAsync(i.Folder);
+        _detail = i;
+        _compareWith = null;
+        SessDetail.Visibility = Visibility.Visible;
+        SessDetailTitle.Text = $"LAUDO · {i.Game.ToUpperInvariant()} · {i.When}";
+        SessDetailLines.ItemsSource = new[] { "Analisando…" };
+        SessCompareLines.ItemsSource = null;
+        // Sessões antigas (ou interrompidas) ganham o laudo na hora; as novas já vêm com ele.
+        var laudo = await Task.Run(() => { try { return SessionAnalyzer.Run(i.Folder); } catch { return null; } });
+        SessDetailVerdict.Text = laudo?.Veredito.ToUpperInvariant() ?? "SEM DADOS";
+        SessDetailLines.ItemsSource = laudo?.Linhas.Select(l => l.ToString()).ToList() ?? new List<string> { "Esta sessão não tem resumo (foi interrompida antes de salvar)." };
+        var previous = SessionStore.List().FirstOrDefault(x => x.Game == i.Game && x.Start < i.Start && x.Folder != i.Folder);
+        BtnSessCompare.IsEnabled = previous != null;
+        BtnSessCompare.Content = previous != null ? $"COMPARAR COM A ANTERIOR ({previous.Start:dd/MM HH:mm})" : "SEM SESSÃO ANTERIOR DESTE JOGO";
+        BtnSessCompare.Tag = previous;
+        RefreshSessionList();
+        SessDetail.BringIntoView();
+    }
+
+    private void BtnSessCompare_Click(object sender, RoutedEventArgs e)
+    {
+        if (_detail == null || BtnSessCompare.Tag is not SessionStore.Item prev) return;
+        _compareWith = prev;
+        SessCompareLines.ItemsSource = new[] { $"Comparação: {prev.When} → {_detail.When}" }.Concat(SessionAnalyzer.Compare(prev.Folder, _detail.Folder)).ToList();
+    }
+
+    private async void BtnSessDetailClaude_Click(object sender, RoutedEventArgs e)
+    {
+        if (_detail == null) return;
+        await OpenClaudeAsync(_detail.Folder, _compareWith?.Folder);
+    }
+
+    private void BtnSessDetailClose_Click(object sender, RoutedEventArgs e)
+    {
+        SessDetail.Visibility = Visibility.Collapsed;
+        _detail = _compareWith = null;
     }
 
     // ------------------------------------------------------------------ apoio

@@ -218,8 +218,9 @@ public sealed class GameSession : IDisposable
 public static class SessionStore
 {
     public sealed record Item(string Folder, string Game, DateTime Start, double Seconds, double AvgFps, double Low1, double Low01, int Stutters, long Bytes,
-                              IReadOnlyList<string> Avisos)
+                              IReadOnlyList<string> Avisos, string? Veredito)
     {
+        public string VereditoText => Veredito != null ? $"LAUDO: {Veredito.ToUpperInvariant()}" : "";
         public string AvisosText => Avisos.Count == 0 ? "" : (Avisos.Count == 1 ? Avisos[0] : $"{Avisos.Count} avisos · {Avisos[0]}");
         public string Title => Game;
         public string When => $"{Start:dd/MM/yyyy HH:mm} · {TimeSpan.FromSeconds(Seconds):h\\:mm\\:ss}";
@@ -239,14 +240,15 @@ public static class SessionStore
             {
                 long bytes = new DirectoryInfo(dir).GetFiles().Sum(f => f.Length);
                 string resumo = Path.Combine(dir, "resumo.json");
-                if (!File.Exists(resumo)) { list.Add(new Item(dir, Path.GetFileName(dir) + " (incompleta)", Directory.GetCreationTime(dir), 0, 0, 0, 0, 0, bytes, Array.Empty<string>())); continue; }
+                if (!File.Exists(resumo)) { list.Add(new Item(dir, Path.GetFileName(dir) + " (incompleta)", Directory.GetCreationTime(dir), 0, 0, 0, 0, 0, bytes, Array.Empty<string>(), null)); continue; }
                 using var doc = JsonDocument.Parse(File.ReadAllText(resumo));
                 var r = doc.RootElement;
                 double D(string k) => r.TryGetProperty(k, out var e) && e.ValueKind == JsonValueKind.Number ? e.GetDouble() : 0;
                 var avisos = r.TryGetProperty("avisos", out var av) && av.ValueKind == JsonValueKind.Array
                     ? av.EnumerateArray().Select(x => x.GetString() ?? "").Where(x => x.Length > 0).ToList() : new List<string>();
+                string? veredito = r.TryGetProperty("laudo", out var lj) && lj.TryGetProperty("veredito", out var vj) ? vj.GetString() : null;
                 list.Add(new Item(dir, r.GetProperty("jogo").GetString() ?? "?", DateTime.Parse(r.GetProperty("inicio").GetString()!, CultureInfo.InvariantCulture),
-                    D("duracao_s"), D("fps_medio"), D("low_1pct_fps"), D("low_01pct_fps"), (int)D("engasgos"), bytes, avisos));
+                    D("duracao_s"), D("fps_medio"), D("low_1pct_fps"), D("low_01pct_fps"), (int)D("engasgos"), bytes, avisos, veredito));
             }
             catch { }
         }
