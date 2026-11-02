@@ -86,7 +86,7 @@ public partial class MainWindow
             IntPtr nvml = gpu?.NvmlHandle ?? IntPtr.Zero;
             _pcieProbe = new PcieProbe(nvml);
             var gpuProbe = new GpuProcessProbe();
-            _probes = new List<SessionProbe> { new GameProcessProbe(), _pcieProbe, gpuProbe, new BackgroundProcessesProbe(gpuProbe), new NetworkProbe() };
+            _probes = new List<SessionProbe> { new GameProcessProbe(), _pcieProbe, gpuProbe, new BackgroundProcessesProbe(gpuProbe), new NetworkProbe(), new PresentMonProbe() };
 
             _sessionRows = _monitor.Rows.ToList();
             var session = new GameSession(GameName(proc, exe), exe, pid, _sessionRows.Select(SensorColumn).ToList(),

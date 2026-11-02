@@ -18,3 +18,6 @@ ResetExplode-dist/
 
 # Drivers seriais embutidos (RESET MAKER): as DLLs fazem parte dos pacotes assinados
 !Drivers/**
+
+# Ferramentas embutidas (PresentMon etc.): executáveis assinados de terceiros, versionados de propósito
+!Tools/**
