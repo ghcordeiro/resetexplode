@@ -33,6 +33,11 @@ public sealed class GameProfile
     public string Style { get; set; } = "source";      // source | unity | unreal
     public string Extra { get; set; } = "";
     public List<HelperProgram> Helpers { get; set; } = new();
+    /// <summary>"" = todos os núcleos, "vcache" = CCD com 3D V-Cache, "pcores" = só núcleos de desempenho (Intel híbrido).</summary>
+    public string Affinity { get; set; } = "";
+    /// <summary>Último limite de FPS / baixa latência aplicados no perfil do driver NVIDIA (0/false = nada).</summary>
+    public int NvFpsLimit { get; set; }
+    public bool NvLowLatency { get; set; }
 }
 
 /// <summary>Jogo adicionado à mão (qualquer .exe).</summary>

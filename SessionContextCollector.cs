@@ -35,6 +35,12 @@ public static class SessionContextCollector
         return c;
     }
 
+    /// <summary>Monitor principal (resolução e Hz atuais), para sugestões fora de uma sessão.</summary>
+    public static SessionContext.MonitorJogo? PrimaryMonitor()
+    {
+        try { return MonitorOf(IntPtr.Zero); } catch { return null; }
+    }
+
     /// <summary>Link PCIe atual (para guardar o maior visto durante o jogo).</summary>
     public static (uint? Gen, uint? Width) PcieNow(IntPtr nvml) =>
         nvml == IntPtr.Zero ? (null, null) : (Nvml.CurPcieGen(nvml), Nvml.CurPcieWidth(nvml));

@@ -206,6 +206,8 @@ public static class GameLauncher
             else if (exe != null) ShellRunner.Run(exe, args, Path.GetDirectoryName(exe));
             else throw new InvalidOperationException("Não achei o executável deste jogo. Escolha o .exe na seção Desempenho.");
 
+            ulong? affinity = string.IsNullOrEmpty(p.Affinity) ? null : CpuTopology.MaskFor(CpuTopology.Read(), p.Affinity);
+
             // Espera o processo do jogo aparecer (até 3 min) e acompanha até fechar
             Process? game = null;
             for (int i = 0; i < 120 && game == null; i++)
@@ -224,7 +226,12 @@ public static class GameLauncher
                     game.PriorityClass = p.Priority switch { "high" => ProcessPriorityClass.High, "above" => ProcessPriorityClass.AboveNormal, _ => ProcessPriorityClass.Normal };
                 }
                 catch { }
-                status($"{g.Name} em execução" + (p.Priority != "normal" ? $" · prioridade {(p.Priority == "high" ? "alta" : "acima do normal")}" : "") + ".");
+                // Núcleos com 3D V-Cache (Ryzen X3D) ou só P-cores (Intel híbrido); anti-cheats podem negar, e aí o jogo segue em todos.
+                if (affinity is ulong mask)
+                    try { game.ProcessorAffinity = new IntPtr(unchecked((long)mask)); }
+                    catch { affinity = null; status("O jogo não aceitou trocar os núcleos (anti-cheat?): segue em todos."); }
+                status($"{g.Name} em execução" + (p.Priority != "normal" ? $" · prioridade {(p.Priority == "high" ? "alta" : "acima do normal")}" : "") +
+                       (affinity is ulong am ? $" · threads {CpuTopology.MaskText(am)}" : "") + ".");
                 try { await game.WaitForExitAsync(ct); } catch (OperationCanceledException) { throw; } catch { }
                 game.Dispose();
                 game = null;

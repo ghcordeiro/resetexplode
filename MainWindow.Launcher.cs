@@ -123,6 +123,7 @@ public partial class MainWindow
         LChkPlan.IsChecked = p.HighPerfPlan;
         LChkGpu.IsChecked = p.GpuHigh;
         LChkFso.IsChecked = p.DisableFso;
+        SetChip(LAffinityPanel, p.Affinity ?? "");
         SetChip(LModePanel, p.WinMode);
         SetChip(LResPanel, p.Res);
         SetChip(LHzPanel, p.Hz.ToString());
@@ -141,6 +142,7 @@ public partial class MainWindow
         _lLoading = false;
         UpdateLauncherPreview();
         await ShowExeAsync(g, p);
+        ShowHardwareProfileOptions(g, p);
     }
 
     private async Task ShowExeAsync(LibGame g, GameProfile p)
@@ -168,6 +170,7 @@ public partial class MainWindow
         _lp.HighPerfPlan = LChkPlan.IsChecked == true;
         _lp.GpuHigh = LChkGpu.IsChecked == true;
         _lp.DisableFso = LChkFso.IsChecked == true;
+        _lp.Affinity = CheckedTag(LAffinityPanel) ?? "";
         _lp.WinMode = CheckedTag(LModePanel) ?? "default";
         _lp.Res = CheckedTag(LResPanel) ?? "default";
         _lp.Hz = int.TryParse(CheckedTag(LHzPanel), out int hz) ? hz : 0;

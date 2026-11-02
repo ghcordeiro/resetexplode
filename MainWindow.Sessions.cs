@@ -107,11 +107,20 @@ public partial class MainWindow
             string? cpu = InfoValue("Processador"), gpuName = gpu?.Name, driver = nvml != IntPtr.Zero ? Nvml.DriverVersion() : null;
             string folder = session.Folder;
             var inputTest = _settings.LastInputTest;
+            string? affinityText = null;
+            try
+            {
+                ulong all = Environment.ProcessorCount >= 64 ? ulong.MaxValue : (1UL << Environment.ProcessorCount) - 1;
+                ulong mask = unchecked((ulong)(long)proc.ProcessorAffinity);
+                affinityText = (mask & all) == all ? "todos os núcleos" : "threads " + CpuTopology.MaskText(mask);
+            }
+            catch { /* anti-cheat pode negar a leitura */ }
             _sessionCtx = Task.Run(() =>
             {
                 var tweaksOn = WindowsTweaks.All().Where(t => { try { return t.Read() == true; } catch { return false; } }).Select(t => t.Title).ToList();
                 var ctx = SessionContextCollector.Collect(exe, hwnd, nvml, cpu, gpuName, driver, tweaksOn);
                 ctx.EntradaMedida = inputTest;
+                ctx.Afinidade = affinityText;
                 try { ctx.Save(folder); } catch { }
                 return ctx;
             });

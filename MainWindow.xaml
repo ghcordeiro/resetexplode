@@ -1091,6 +1091,13 @@
                                     <RadioButton Style="{StaticResource Chip}" GroupName="LPriority" Content="Acima do normal" Tag="above" Checked="LProfile_Changed"/>
                                     <RadioButton Style="{StaticResource Chip}" GroupName="LPriority" Content="Alta" Tag="high" Checked="LProfile_Changed"/>
                                 </WrapPanel>
+                                    <TextBlock Text="Núcleos da CPU" Foreground="{DynamicResource Muted}" FontSize="12"/>
+                                    <WrapPanel x:Name="LAffinityPanel" Margin="0,4,0,4">
+                                        <RadioButton Style="{StaticResource Chip}" GroupName="LAffinity" Content="Todos" Tag="" IsChecked="True" Checked="LProfile_Changed"/>
+                                        <RadioButton x:Name="LAffVCache" Style="{StaticResource Chip}" GroupName="LAffinity" Content="Só os com 3D V-Cache" Tag="vcache" Checked="LProfile_Changed"/>
+                                        <RadioButton x:Name="LAffPCores" Style="{StaticResource Chip}" GroupName="LAffinity" Content="Só P-cores (desempenho)" Tag="pcores" Checked="LProfile_Changed"/>
+                                    </WrapPanel>
+                                    <TextBlock x:Name="LAffinityInfo" Foreground="{DynamicResource Faint}" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,10"/>
                                     <CheckBox x:Name="LChkPlan" Content="Plano de energia Alto desempenho enquanto joga (volta ao normal depois)" Margin="0,0,0,10" Click="LProfile_Changed"/>
                                     <CheckBox x:Name="LChkGpu" Content="Forçar a placa de vídeo dedicada (configuração gráfica do Windows)" Margin="0,0,0,10" Click="LProfile_Changed"/>
                                     <CheckBox x:Name="LChkFso" Content="Desativar otimizações de tela cheia do Windows" Margin="0,0,0,12" Click="LProfile_Changed"/>
@@ -1103,6 +1110,27 @@
                                         Prioridade e plano de energia valem só durante o jogo. As opções de GPU e tela cheia são gravadas para o .exe do jogo no Windows
                                         (o programa descobre o .exe sozinho; se errar, escolha o certo).
                                     </TextBlock>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Placa de vídeo NVIDIA: perfil do driver -->
+                            <Border x:Name="LNvidiaBox" Style="{StaticResource CardBorder}" Margin="0,0,0,14" Visibility="Collapsed">
+                                <StackPanel>
+                                    <TextBlock Text="NVIDIA · PERFIL DO DRIVER" Style="{StaticResource Label}"/>
+                                    <TextBlock Foreground="{DynamicResource Muted}" FontSize="12" TextWrapping="Wrap" Margin="0,4,0,10">
+                                        Grava no driver (como o Painel de Controle NVIDIA) para o .exe deste jogo. Vale sempre, mesmo sem abrir pelo RESET EXPLODE,
+                                        até você remover (deixe vazio e desmarcado e aplique).
+                                    </TextBlock>
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                                        <TextBlock Text="Limite de FPS" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                                        <TextBox x:Name="LNvFps" Width="80" Tag="sem limite"/>
+                                        <TextBlock x:Name="LNvSuggest" Foreground="{DynamicResource Faint}" FontSize="11" VerticalAlignment="Center" Margin="12,0,0,0" TextWrapping="Wrap"/>
+                                    </StackPanel>
+                                    <CheckBox x:Name="LNvLowLat" Content="Modo de baixa latência (Ligado: o driver não acumula frames na fila)" Margin="0,4,0,10"/>
+                                    <WrapPanel>
+                                        <Button Style="{StaticResource OutlineButton}" Content="APLICAR NO DRIVER" Padding="14,8" Click="BtnNvApply_Click"/>
+                                    </WrapPanel>
+                                    <TextBlock x:Name="LNvStatus" Foreground="{DynamicResource Muted}" FontSize="12" TextWrapping="Wrap" Margin="0,8,0,0"/>
                                 </StackPanel>
                             </Border>
 
@@ -2310,6 +2338,25 @@
                                 </StackPanel>
                             </Border>
                         </Grid>
+
+                        <Border Style="{StaticResource CardBorder}" Margin="0,14,0,0">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel>
+                                    <TextBlock Text="CACHE DE SHADERS" Style="{StaticResource Label}"/>
+                                    <TextBlock Foreground="{DynamicResource Muted}" FontSize="12" TextWrapping="Wrap" Margin="0,4,20,0">
+                                        Shaders já compilados pelo driver de vídeo e pelo DirectX. Limpe depois de atualizar o driver se os jogos passaram a engasgar:
+                                        as primeiras partidas recompilam os shaders (engasgam um pouco) e depois fica liso. Feche os jogos antes.
+                                    </TextBlock>
+                                    <TextBlock x:Name="ShaderInfo" FontSize="12" TextWrapping="Wrap" Margin="0,8,20,0"/>
+                                </StackPanel>
+                                <Button x:Name="BtnShaderClean" Grid.Column="1" Style="{StaticResource OutlineButton}" Content="LIMPAR CACHE DE SHADERS"
+                                        Padding="14,8" VerticalAlignment="Top" Click="BtnShaderClean_Click"/>
+                            </Grid>
+                        </Border>
                     </StackPanel>
                 </ScrollViewer>
 

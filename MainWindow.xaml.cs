@@ -839,6 +839,7 @@ public partial class MainWindow : Window
                 try { t.Refresh(); } catch (Exception ex) { t.Status = $"Não foi possível ler: {ex.Message}"; }
             OptTweaks.ItemsSource = _tweaks;
         }
+        RefreshShaderInfo();
         RefreshApps();
         UpdateRamStatus();
     }
