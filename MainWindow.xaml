@@ -248,6 +248,12 @@
                                     <TextBlock Text="Overlay" VerticalAlignment="Center"/>
                                 </StackPanel>
                             </RadioButton>
+                            <RadioButton x:Name="NavSessions" Style="{StaticResource NavItem}" Tag="PageSessions" Checked="Nav_Checked">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="&#xE7C8;" FontFamily="{StaticResource Icons}" FontSize="14" Width="28" VerticalAlignment="Center"/>
+                                    <TextBlock Text="Sessões" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </RadioButton>
                             </StackPanel>
                             <ToggleButton x:Name="GrpPerf" Style="{StaticResource NavGroup}" Content="RESET DESEMPENHO"/>
                             <StackPanel x:Name="GrpPerfItems" Margin="10,0,0,4" Visibility="{Binding IsChecked, ElementName=GrpPerf, Converter={StaticResource BoolVis}}">
@@ -1510,6 +1516,76 @@
                 </ScrollViewer>
 
                 <!-- ===== OVERLAY ===== -->
+                <!-- ===== SESSÕES (gravação de tudo durante o jogo) ===== -->
+                <ScrollViewer x:Name="PageSessions" Visibility="Collapsed" VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="36,30,36,30">
+                        <StackPanel Margin="0,0,0,20">
+                            <TextBlock Text="Sessões" Style="{StaticResource H1}"/>
+                            <TextBlock Text="Grava cada frame e todos os sensores enquanto você joga, para analisar depois" Style="{StaticResource Sub}" TextWrapping="Wrap"/>
+                        </StackPanel>
+
+                        <Border Style="{StaticResource CardBorder}" Margin="0,0,0,14">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel>
+                                    <CheckBox x:Name="ChkAutoRecord" Content="Gravar automaticamente quando um jogo abrir" FontSize="15" Click="ChkAutoRecord_Click"/>
+                                    <TextBlock Foreground="{DynamicResource Muted}" Margin="46,6,0,0" TextWrapping="Wrap" FontSize="12">
+                                        Começa quando um programa em tela cheia (ou janela sem borda) entrega frames por 10 s e para quando ele fecha.
+                                        Grava o tempo de cada frame, todos os sensores a cada segundo (CPU por núcleo, GPU, RAM, discos, ventoinhas,
+                                        tensões), limitador da GPU, uso de CPU e RAM do jogo, engasgos, alt-tab e erros de hardware.
+                                        O RESET EXPLODE precisa estar aberto (pode ficar minimizado).
+                                    </TextBlock>
+                                    <TextBlock x:Name="SessStatus" Margin="46,10,0,0" TextWrapping="Wrap" FontWeight="SemiBold"/>
+                                </StackPanel>
+                                <Button x:Name="BtnSessToggle" Grid.Column="1" Style="{StaticResource PrimaryButton}" Content="GRAVAR AGORA"
+                                        MinWidth="170" VerticalAlignment="Top" Margin="20,0,0,0" Click="BtnSessToggle_Click"/>
+                            </Grid>
+                        </Border>
+
+                        <Border Style="{StaticResource CardBorder}">
+                            <StackPanel>
+                                <Grid Margin="0,0,0,6">
+                                    <TextBlock Text="SESSÕES GRAVADAS" Style="{StaticResource Label}"/>
+                                    <Button Style="{StaticResource OutlineButton}" Content="ABRIR PASTA" Padding="10,4" FontSize="11"
+                                            HorizontalAlignment="Right" VerticalAlignment="Top" Click="SessOpen_Click"/>
+                                </Grid>
+                                <TextBlock x:Name="SessTotal" Foreground="{DynamicResource Faint}" FontSize="11" Margin="0,0,0,10"/>
+                                <ItemsControl x:Name="SessList">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border BorderBrush="{DynamicResource Line}" BorderThickness="0,1,0,0" Padding="0,10">
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <StackPanel>
+                                                        <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                                                        <TextBlock Text="{Binding When}" Foreground="{DynamicResource Muted}" FontSize="12" Margin="0,2,0,0"/>
+                                                        <TextBlock Text="{Binding Stats}" FontFamily="{StaticResource Mono}" FontSize="12" Margin="0,2,0,0"/>
+                                                        <TextBlock Text="{Binding Size}" Foreground="{DynamicResource Faint}" FontSize="11" Margin="0,2,0,0"/>
+                                                    </StackPanel>
+                                                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                                        <Button Style="{StaticResource PrimaryButton}" Content="ANALISAR COM CLAUDE" Padding="10,5" FontSize="11"
+                                                                Tag="{Binding}" Click="SessClaude_Click" Margin="0,0,6,0"/>
+                                                        <Button Style="{StaticResource OutlineButton}" Content="PASTA" Padding="10,5" FontSize="11"
+                                                                Tag="{Binding}" Click="SessOpen_Click" Margin="0,0,6,0"/>
+                                                        <Button Style="{StaticResource OutlineButton}" Content="APAGAR" Padding="10,5" FontSize="11"
+                                                                Tag="{Binding}" Click="SessDelete_Click"/>
+                                                    </StackPanel>
+                                                </Grid>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </ScrollViewer>
+
                 <ScrollViewer x:Name="PageOverlay" Visibility="Collapsed" VerticalScrollBarVisibility="Auto">
                     <StackPanel Margin="36,30,36,30">
                         <StackPanel Margin="0,0,0,20">
@@ -2147,7 +2223,8 @@
                                     </Grid>
                                     <TextBlock Foreground="{DynamicResource Faint}" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,10">
                                         O interruptor mostra o estado atual e aplica na hora. O valor original é guardado na primeira
-                                        alteração. Não mexemos em segurança (Defender, Integridade de Memória, UAC, Windows Update).
+                                        alteração. Os marcados REDUZ SEGURANÇA pedem confirmação; desmarcar volta ao original.
+                                        Nunca mexemos em UAC, firewall nem Windows Update.
                                     </TextBlock>
                                     <ItemsControl x:Name="OptTweaks">
                                         <ItemsControl.ItemTemplate>
@@ -2793,6 +2870,12 @@
                             <StackPanel Grid.Column="1" Grid.RowSpan="2" VerticalAlignment="Center" Margin="20,0,0,0">
                                 <Button x:Name="BtnStress" Style="{StaticResource PrimaryButton}" Content="INICIAR"
                                         MinWidth="150" Click="BtnStress_Click"/>
+                                <Button x:Name="BtnCooling" Style="{StaticResource OutlineButton}" Content="TESTE DE REFRIGERAÇÃO"
+                                        MinWidth="150" Margin="0,8,0,0" Padding="12,7" FontSize="11" Click="BtnCooling_Click"
+                                        ToolTip="~7 min: repouso, carga na CPU e esfriamento. Diz se o problema é o bloco (pasta, bomba) ou o radiador (ventoinhas, poeira)."/>
+                                <Button x:Name="BtnClaude" Style="{StaticResource OutlineButton}" Content="ANALISAR COM CLAUDE"
+                                        MinWidth="150" Margin="0,8,0,0" Padding="12,7" FontSize="11" Click="BtnClaude_Click"
+                                        ToolTip="Salva os dados do PC e o registro dos testes e abre o Claude Code (sem administrador) para a IA analisar. Login com a sua conta do Claude."/>
                                 <TextBlock x:Name="StressHint" Foreground="{DynamicResource Muted}" TextWrapping="Wrap" FontSize="12"
                                            MaxWidth="220" Margin="0,10,0,0" TextAlignment="Center"/>
                             </StackPanel>

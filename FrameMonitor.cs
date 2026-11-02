@@ -28,6 +28,9 @@ public sealed class FrameMonitor : IDisposable
     private readonly Dictionary<int, long> _lastSeen = new();           // pid → Stopwatch do último evento recebido
 
     public bool Running => _thread?.IsAlive == true;
+
+    /// <summary>Cada frame entregue (pid, instante em ms no relógio do ETW). Roda na thread do ETW: o assinante deve ser rápido.</summary>
+    public event Action<int, double>? Present;
     public string? Error { get; private set; }
 
     public void Start()
@@ -71,6 +74,7 @@ public sealed class FrameMonitor : IDisposable
             while (q.Count > 0 && q.Peek() < t - HistoryMs) q.Dequeue();
             _lastSeen[e.ProcessID] = Stopwatch.GetTimestamp();
         }
+        Present?.Invoke(e.ProcessID, t);
     }
 
     /// <summary>Estatísticas do processo, ou null se ele não apresentou frames nos últimos 2 s.</summary>

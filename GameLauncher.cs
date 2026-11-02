@@ -130,6 +130,22 @@ public static class GameLauncher
         return found;
     }
 
+    private static Process? FindStartedProcess(string exe, DateTime since)
+    {
+        Process? found = null;
+        foreach (var pr in Process.GetProcesses())
+        {
+            try
+            {
+                if (found == null && pr.StartTime >= since.AddSeconds(-1) &&
+                    string.Equals(pr.MainModule?.FileName, exe, StringComparison.OrdinalIgnoreCase)) { found = pr; continue; }
+            }
+            catch { }
+            pr.Dispose();
+        }
+        return found;
+    }
+
     /// <summary>
     /// Aplica o perfil, inicia o jogo e acompanha o processo até ele fechar. Ao terminar (ou cancelar) desfaz o que for temporário.
     /// <paramref name="learnedExe"/> é chamado quando o .exe real do jogo é descoberto.
@@ -138,6 +154,7 @@ public static class GameLauncher
     {
         string? oldPlan = null;
         var helpers = new List<(Process Proc, bool Close)>();
+        var launched = new List<(HelperProgram H, DateTime Started)>();
         try
         {
             status("Aplicando o perfil…");
@@ -165,22 +182,28 @@ public static class GameLauncher
                 status($"Abrindo {Path.GetFileName(h.Path)}…");
                 try
                 {
-                    var proc = Process.Start(new ProcessStartInfo(h.Path, h.Args) { UseShellExecute = true, WorkingDirectory = Path.GetDirectoryName(h.Path) ?? "" });
-                    if (proc != null) helpers.Add((proc, h.CloseWithGame));
+                    // Sem administrador: o RESET EXPLODE roda elevado, mas um programa de terceiros não precisa herdar isso.
+                    var started = DateTime.Now;
+                    ShellRunner.Run(h.Path, h.Args, Path.GetDirectoryName(h.Path));
+                    launched.Add((h, started));
                 }
-                catch { }
+                catch (Exception ex) { status($"Não abriu {Path.GetFileName(h.Path)}: {ex.Message}"); }
             }
-            if (helpers.Count > 0) await Task.Delay(1500, ct);
+            if (launched.Count > 0)
+            {
+                await Task.Delay(1500, ct);
+                // O Explorer não devolve o processo: acha pelo caminho do .exe, só os que abriram agora.
+                // shortcut: .bat/.cmd/.lnk não são encontrados, então não fecham junto com o jogo; resolver o alvo do atalho se pedirem.
+                foreach (var (h, started) in launched)
+                    if (FindStartedProcess(h.Path, started) is Process proc) helpers.Add((proc, h.CloseWithGame));
+            }
 
             status($"Iniciando {g.Name}…");
             string args = (g.Args + " " + BuildArgs(p)).Trim();
-            if (g.IsSteam) Process.Start(new ProcessStartInfo($"steam://rungameid/{g.Id}") { UseShellExecute = true });
-            else if (g.LaunchUri != null) Process.Start(new ProcessStartInfo(g.LaunchUri) { UseShellExecute = true });
-            else if (exe != null)
-            {
-                if (args.Length == 0) Process.Start("explorer.exe", $"\"{exe}\""); // abre sem privilégio de administrador
-                else Process.Start(new ProcessStartInfo(exe, args) { UseShellExecute = true, WorkingDirectory = Path.GetDirectoryName(exe) ?? "" });
-            }
+            // Tudo sem administrador (inclusive a Steam/Epic, se ainda não estiverem abertas).
+            if (g.IsSteam) ShellRunner.Run($"steam://rungameid/{g.Id}");
+            else if (g.LaunchUri != null) ShellRunner.Run(g.LaunchUri);
+            else if (exe != null) ShellRunner.Run(exe, args, Path.GetDirectoryName(exe));
             else throw new InvalidOperationException("Não achei o executável deste jogo. Escolha o .exe na seção Desempenho.");
 
             // Espera o processo do jogo aparecer (até 3 min) e acompanha até fechar

@@ -29,6 +29,9 @@ App WPF (.NET 8) com:
 - **Stress test**: carga de CPU em todos os threads (FPU + inteiros) e/ou RAM (grava e verifica padrões em 40–80% da memória livre).
   Para sozinho quando a temperatura da CPU atinge o limite configurado, quando o tempo acaba ou se aparecer erro de memória.
   Mostra temperatura atual/máxima, carga, consumo, gráfico dos últimos 5 min e um log dos eventos.
+  **Teste de refrigeração** (`CoolingTest.cs`, `MainWindow.Cooling.cs`): ~7 min (1 min em repouso, 5 min de carga na CPU, 1 min esfriando).
+  Pela curva diz se o provável problema está no bloco (pasta, aperto, fluxo da bomba) ou no radiador (ventoinhas, poeira, líquido),
+  e se as ventoinhas da placa-mãe aceleram. Não lê a bomba (controladoras como o Corsair Commander Core não aparecem nos sensores).
 - **Stress de GPU** (inspirado no FurMark, `GpuBurn.cs`): torus com pelos renderizado por *shells* em Direct3D 11 (Vortice),
   com overdraw massivo, cadeia de FMAs no pixel shader e alpha blending, sem limite de FPS, numa janela própria.
   Opções: resolução (720p/1080p/1440p/tela cheia), MSAA (off/4x/8x), intensidade (Normal/Alta/Extrema) e limite de temperatura da GPU.
@@ -46,6 +49,11 @@ App WPF (.NET 8) com:
   ventoinha, PerfCap), VRAM, CPU (uso, núcleo mais ocupado, temperatura, clock médio e máximo, consumo), RAM, nome do jogo e hora. Volta para o topo a cada troca de janela ativa
   (jogos em janela sem borda também se marcam como "sempre no topo") e fica no monitor do jogo. Não aparece em tela cheia exclusiva. O FPS de qualquer jogo é medido via ETW
   (eventos Present de DXGI/D3D9, como o PresentMon, `FrameMonitor.cs`), sem injetar nada no jogo.
+- **Sessões de jogo** (`GameSession.cs`, `MainWindow.Sessions.cs`): grava sozinho quando um jogo em tela cheia ou janela sem borda
+  entrega frames por 10 s, até ele fechar (ou à mão). Em `%AppData%\ResetExplode\sessoes\<data>_<jogo>\`: `frames.csv` (tempo de cada frame),
+  `sensores.csv` (1/s: FPS, limitador, P-state/PerfCap da GPU, CPU/RAM/threads do jogo e todos os sensores), `eventos.csv` (engasgos, alt-tab,
+  limitador térmico, CPU acima de 95 °C) e `resumo.json` (FPS médio, 1%/0,1% low, percentis de frametime, % do tempo por limitador, erros de hardware).
+  Acima de 3 GB as mais antigas são apagadas. Cada sessão tem **ANALISAR COM CLAUDE**: abre o Claude Code (sem administrador) com a sessão e os dados do PC.
 - **RESET BENCH** (`BenchRenderer.cs`): benchmark de CPU no princípio do Cinebench, com renderizador próprio. Path tracer monocromático
   (iluminação global, sombras suaves, metal e vidro com refração), 960×540 a 1024 amostras/pixel, imagem em blocos de 32 px
   distribuídos entre threads do centro para fora. Multi-core (todas as threads) e single-core (1 thread, imagem inteira, ~1min40s num 7700X),
@@ -72,7 +80,10 @@ App WPF (.NET 8) com:
 - **RESET OTIMIZA** (`Optimizer.cs`, `WindowsTweaks.cs`): um botão que limpa a memória em espera (como o ISLC) e enxuga a RAM dos
   processos, e fecha os programas marcados (pré-marca só os seguros: OneDrive, Teams, Widgets, Adobe...; programas com janela são
   fechados sem forçar). Ajustes do Windows com interruptor e "Restaurar originais": plano Alto desempenho, Modo de Jogo, desativar
-  Game DVR, HAGS, otimizações para jogos em janela, aceleração do mouse. Nada que reduza a segurança (Defender, VBS, UAC, Update).
+  Game DVR, HAGS, otimizações para jogos em janela, aceleração do mouse, Power Throttling, USB/PCIe sem economia de energia (na tomada),
+  prioridade de jogos no MMCSS, apps da Store em segundo plano e indexação do Windows Search.
+  **Ajustes que reduzem a segurança** (marcados *REDUZ SEGURANÇA*, pedem confirmação e voltam ao original ao desmarcar): desligar
+  Integridade de Memória/VBS, desligar as mitigações de Spectre/Meltdown e excluir as pastas dos jogos do Defender. Nunca mexe em UAC, firewall nem Update.
 - **RESET MAKER** (Arduino, ESP32 e conversores USB-serial):
   - *Portas COM* (`UsbCleaner.cs`): lista e remove registros de dispositivos USB/seriais ausentes ("fantasmas" de Arduino,
     ESP32, CH340, FTDI, CP210x...) e libera os números COM presos no ComDB, com backup para desfazer. Resolve a IDE do Arduino
@@ -113,7 +124,8 @@ App WPF (.NET 8) com:
   GPU dedicada e sem otimizações de tela cheia (por `.exe`, no registro do usuário), **menu de gráficos** (modo de janela, resolução, taxa de atualização e extras
   convertidos em argumentos de inicialização no estilo Source/CS2, Unity ou Unreal) e **programas auxiliares** (ferramentas de terceiros que abrem antes do jogo
   e fecham junto). Em jogos da Steam, um botão grava os argumentos nas **opções de inicialização** (`localconfig.vdf`, com backup, fechando a Steam antes).
-  O botão JOGAR aplica o perfil, inicia e desfaz o que for temporário quando o jogo fecha.
+  O botão JOGAR aplica o perfil, inicia e desfaz o que for temporário quando o jogo fecha. Jogos, launchers e programas auxiliares abrem
+  **sem privilégio de administrador** (pelo Explorer, `ShellRunner.cs`).
 
 ## Interface
 - Visual preto e branco minimalista em **blocos** (cartões arredondados, inspirado em painéis de dashboard). Um único menu lateral

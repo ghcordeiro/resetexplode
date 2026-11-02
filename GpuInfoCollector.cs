@@ -33,7 +33,7 @@ public sealed class GpuInfo
         return list;
     }
 
-    private static string PerfCap(ulong r)
+    internal static string PerfCap(ulong r)
     {
         var parts = new List<string>();
         if ((r & 0x4) != 0) parts.Add("Energia");

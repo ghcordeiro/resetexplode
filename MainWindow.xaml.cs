@@ -110,6 +110,8 @@ public partial class MainWindow : Window
             _monitor.Refresh();
             if (_monitor.IsOpen) StatusText.Text = $"{_monitor.Rows.Count} sensores · atualizado {DateTime.Now:HH:mm:ss}";
             UpdateStressPanel();
+            CoolingTick();
+            SessionTick();
             UpdateGpuLive();
             UpdateCpuSensorWarning();
             CollectDashSample();
@@ -129,6 +131,7 @@ public partial class MainWindow : Window
         Closed += (_, _) =>
         {
             _timer.Stop(); _overlayTimer?.Stop();
+            StopSession("RESET EXPLODE fechado");
             _stress.Stop(); _burn.Stop(); _benchCts?.Cancel();
             _overlay?.Close();
             _toast?.Close();
@@ -280,12 +283,13 @@ public partial class MainWindow : Window
             case "PageMakerPorts": ScanUsb(); break;
             case "PageMakerDrv": InitMakerDrivers(); break;
             case "PageOptimize": InitOptimize(); break;
+            case "PageSessions": InitSessions(); break;
         }
     }
 
     private void ShowPage(string name)
     {
-        foreach (var p in new FrameworkElement[] { PageDash, PageSystem, PageSensors, PageGpu, PageGames, PageBottleneck, PageOverlay, PageBench, PageOptimize, PageOc, PageInteg, PageLauncher, PageDriver, PageStartup, PageApps, PageMakerPorts, PageMakerDrv, PageDisks, PageEnergy, PageNet, PageStress })
+        foreach (var p in new FrameworkElement[] { PageDash, PageSystem, PageSensors, PageGpu, PageGames, PageBottleneck, PageOverlay, PageSessions, PageBench, PageOptimize, PageOc, PageInteg, PageLauncher, PageDriver, PageStartup, PageApps, PageMakerPorts, PageMakerDrv, PageDisks, PageEnergy, PageNet, PageStress })
             p.Visibility = p.Name == name ? Visibility.Visible : Visibility.Collapsed;
     }
 
@@ -890,6 +894,12 @@ public partial class MainWindow : Window
     {
         if (sender is not CheckBox { Tag: Tweak t } box) return;
         bool turnOn = box.IsChecked == true;
+        if (turnOn && t.Warning != null &&
+            MessageBox.Show(this, t.Warning, t.Title, MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) != MessageBoxResult.Yes)
+        {
+            box.IsChecked = t.IsOn;
+            return;
+        }
         try
         {
             t.Write(turnOn, _settings);

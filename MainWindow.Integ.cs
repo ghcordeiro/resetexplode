@@ -255,7 +255,7 @@ public partial class MainWindow
         string? exe = FindOpenRgb();
         if (exe == null)
         {
-            try { Process.Start(new ProcessStartInfo("https://openrgb.org/") { UseShellExecute = true }); } catch { }
+            ShellRunner.OpenUrl("https://openrgb.org/");
             OrgbStatus.Text = "OpenRGB: abri o site openrgb.org no navegador. Baixe, descompacte (pode ser em Downloads ou Documentos), e volte aqui.";
             return;
         }

@@ -80,7 +80,7 @@ public partial class MainWindow
 
     private static void OpenUrl(string url)
     {
-        try { Process.Start(new ProcessStartInfo(url) { UseShellExecute = true }); } catch { }
+        ShellRunner.OpenUrl(url);
     }
 
     private void BtnDrvGpuPage_Click(object sender, RoutedEventArgs e)

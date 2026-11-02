@@ -118,17 +118,9 @@ public static class CorsairSdkInstaller
         if (trust == unchecked((int)0x800B0100)) return "Aviso: a DLL não tem assinatura digital (origem: repositório oficial da Corsair no GitHub).";
         if (trust != 0) throw new InvalidOperationException($"A assinatura digital da DLL é inválida (0x{trust:X8}). O arquivo foi descartado.");
 
-        string signer = "";
-        try
-        {
-#pragma warning disable SYSLIB0057
-            using var cert = X509Certificate.CreateFromSignedFile(path);
-            signer = new X509Certificate2(cert).Subject;
-#pragma warning restore SYSLIB0057
-        }
-        catch { }
-        if (!signer.Contains("Corsair", StringComparison.OrdinalIgnoreCase))
-            throw new InvalidOperationException($"A DLL está assinada por outro fabricante ({signer}). O arquivo foi descartado.");
+        string? org = SignerOrganization(path);
+        if (!SameOrganization(org, "Corsair Memory, Inc."))
+            throw new InvalidOperationException($"A DLL está assinada por outro fabricante ({org ?? "desconhecido"}). O arquivo foi descartado.");
         return "Assinatura digital da Corsair válida.";
     }
 
@@ -158,6 +150,30 @@ public static class CorsairSdkInstaller
         public uint dwProvFlags;
         public uint dwUIContext;
         public IntPtr pSignatureSettings;
+    }
+
+    /// <summary>Organização (campo O=) do certificado que assinou o arquivo, ou null se não der para ler.
+    /// Só faz sentido depois que WinVerifyTrustFile devolveu 0 (assinatura válida e confiável).</summary>
+    internal static string? SignerOrganization(string path)
+    {
+        try
+        {
+#pragma warning disable SYSLIB0057
+            using var cert = new X509Certificate2(X509Certificate.CreateFromSignedFile(path));
+#pragma warning restore SYSLIB0057
+            return cert.SubjectName.EnumerateRelativeDistinguishedNames()
+                .Where(r => !r.HasMultipleElements && r.GetSingleElementType().Value == "2.5.4.10") // OID de O (Organization)
+                .Select(r => r.GetSingleElementValue()).FirstOrDefault();
+        }
+        catch { return null; }
+    }
+
+    /// <summary>Compara o nome inteiro da organização, ignorando maiúsculas, espaços e pontuação ("Inc." = "INC").
+    /// Não aceita nome que só contém o esperado (ex.: "Fake NVIDIA Corporation LLC").</summary>
+    internal static bool SameOrganization(string? org, params string[] expected)
+    {
+        static string Norm(string s) => new(s.Where(char.IsLetterOrDigit).Select(char.ToLowerInvariant).ToArray());
+        return org != null && expected.Any(e => Norm(org) == Norm(e));
     }
 
     [DllImport("wintrust.dll", ExactSpelling = true, SetLastError = false)]

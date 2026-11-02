@@ -81,7 +81,7 @@ public partial class MainWindow
     private void MakerOfficial_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not FrameworkElement { Tag: SerialChip chip }) return;
-        try { Process.Start(new ProcessStartInfo(chip.OfficialUrl) { UseShellExecute = true }); }
+        try { ShellRunner.Run(chip.OfficialUrl); }
         catch (Exception ex) { MakerStatus.Text = $"Não foi possível abrir o navegador: {ex.Message}"; }
     }
 

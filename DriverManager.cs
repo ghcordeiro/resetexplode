@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using System.IO;
 using System.Globalization;
 using System.Management;
@@ -313,7 +313,7 @@ public static class DriverManager
         }
 
         progress("Conferindo a assinatura digital…", 1);
-        VerifyPublisher(file, g.Vendor == "AMD" ? "Advanced Micro Devices" : "NVIDIA");
+        VerifyPublisher(file, g.Vendor == "AMD" ? "Advanced Micro Devices, Inc." : "NVIDIA Corporation");
 
         progress("Criando ponto de restauração (se o Windows permitir)…", 1);
         string restore = await TryRestorePointAsync();
@@ -330,19 +330,11 @@ public static class DriverManager
             try { File.Delete(path); } catch { }
             throw new InvalidOperationException($"Assinatura digital inválida (0x{trust:X8}). O arquivo foi descartado.");
         }
-        string signer = "";
-        try
-        {
-#pragma warning disable SYSLIB0057
-            using var cert = X509Certificate.CreateFromSignedFile(path);
-            signer = new X509Certificate2(cert).Subject;
-#pragma warning restore SYSLIB0057
-        }
-        catch { }
-        if (!signer.Contains(publisher, StringComparison.OrdinalIgnoreCase))
+        string? org = CorsairSdkInstaller.SignerOrganization(path);
+        if (!CorsairSdkInstaller.SameOrganization(org, publisher))
         {
             try { File.Delete(path); } catch { }
-            throw new InvalidOperationException($"O arquivo está assinado por outro fabricante ({signer}). Foi descartado.");
+            throw new InvalidOperationException($"O arquivo está assinado por outro fabricante ({org ?? "desconhecido"}). Foi descartado.");
         }
     }
 

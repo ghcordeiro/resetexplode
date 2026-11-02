@@ -46,7 +46,7 @@ public partial class MainWindow
     private void BtnAppsStore_Click(object sender, RoutedEventArgs e)
     {
         // Página do "Instalador de Aplicativo" (App Installer), que traz o winget.
-        try { Process.Start(new ProcessStartInfo("ms-windows-store://pdp/?productid=9NBLGGH4NNS1") { UseShellExecute = true }); }
+        try { ShellRunner.Run("ms-windows-store://pdp/?productid=9NBLGGH4NNS1"); }
         catch (Exception ex) { AppsStatus.Text = $"Não foi possível abrir a Microsoft Store: {ex.Message}"; }
     }
 

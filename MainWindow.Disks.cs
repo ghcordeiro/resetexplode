@@ -126,6 +126,33 @@ public partial class MainWindow
         }
     }
 
+    /// <summary>Monta os dados do relatório (o mesmo do EXPORTAR RELATÓRIO e do ANALISAR COM CLAUDE). Chamar na thread da tela.</summary>
+    private async Task<ReportData> BuildReportDataAsync(string machine)
+    {
+        // Dados que vivem na interface são copiados aqui (thread da tela); a leitura dos discos roda em segundo plano.
+        var sensorsSnapshot = _monitor.Rows.ToList();
+        var data = new ReportData
+        {
+            Date = DateTime.Now,
+            Machine = machine,
+            AppVersion = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "",
+            LogoBase64 = LoadLogoBase64(),
+            System = (InfoCategories.ItemsSource as IEnumerable<InfoNode> ?? Enumerable.Empty<InfoNode>())
+                     .Select(ReportBuilder.ToNode).Where(n => n != null).Cast<ReportNode>().ToList(),
+            Gpus = _gpus.Select(g => new ReportGpu(g.Name, g.Subtitle,
+                     g.Sections.Select(ReportBuilder.ToNode).Where(n => n != null).Cast<ReportNode>().ToList())).ToList(),
+            Sensors = sensorsSnapshot.Select(s => new ReportSensor(s.Hardware, s.Category, s.Name, s.Value, s.Min, s.Max)).ToList(),
+            Benchmarks = BuildBenchList(),
+        };
+        var disks = await Task.Run(() => DiskHealth.Read(sensorsSnapshot));
+        data.Disks.AddRange(disks.Select(d => new ReportDisk(d.Title, d.Meta, d.VerdictText, d.Reasons, d.Metrics)));
+        var power = await Task.Run(() => BatteryInfo.Read(sensorsSnapshot));
+        data.Power.AddRange(power.Select(d => new ReportDisk(d.Title, d.Meta, d.VerdictText, d.Reasons, d.Metrics)));
+        if (_lastNet != null)
+            data.Network.AddRange(_lastNet.Select(d => new ReportDisk(d.Title, d.Meta, d.VerdictText, d.Reasons, d.Metrics)));
+        return data;
+    }
+
     // ================= Relatório exportável =================
 
     private async void BtnReport_Click(object sender, RoutedEventArgs e)
@@ -145,33 +172,12 @@ public partial class MainWindow
         BtnReport.Content = "GERANDO…";
         try
         {
-            // Dados que vivem na interface são copiados aqui (thread da tela); a leitura dos discos roda em segundo plano.
-            var sensorsSnapshot = _monitor.Rows.ToList();
-            var data = new ReportData
-            {
-                Date = DateTime.Now,
-                Machine = Environment.MachineName,
-                AppVersion = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "",
-                LogoBase64 = LoadLogoBase64(),
-                System = (InfoCategories.ItemsSource as IEnumerable<InfoNode> ?? Enumerable.Empty<InfoNode>())
-                         .Select(ReportBuilder.ToNode).Where(n => n != null).Cast<ReportNode>().ToList(),
-                Gpus = _gpus.Select(g => new ReportGpu(g.Name, g.Subtitle,
-                         g.Sections.Select(ReportBuilder.ToNode).Where(n => n != null).Cast<ReportNode>().ToList())).ToList(),
-                Sensors = sensorsSnapshot.Select(s => new ReportSensor(s.Hardware, s.Category, s.Name, s.Value, s.Min, s.Max)).ToList(),
-                Benchmarks = BuildBenchList(),
-            };
-            var disks = await Task.Run(() => DiskHealth.Read(sensorsSnapshot));
-            data.Disks.AddRange(disks.Select(d => new ReportDisk(d.Title, d.Meta, d.VerdictText, d.Reasons, d.Metrics)));
-            var power = await Task.Run(() => BatteryInfo.Read(sensorsSnapshot));
-            data.Power.AddRange(power.Select(d => new ReportDisk(d.Title, d.Meta, d.VerdictText, d.Reasons, d.Metrics)));
-            if (_lastNet != null)
-                data.Network.AddRange(_lastNet.Select(d => new ReportDisk(d.Title, d.Meta, d.VerdictText, d.Reasons, d.Metrics)));
-
+            var data = await BuildReportDataAsync(Environment.MachineName);
             string text = json ? ReportBuilder.Json(data) : ReportBuilder.Html(data);
             await File.WriteAllTextAsync(path, text, new UTF8Encoding(true));
 
             SystemSub.Text = $"Relatório salvo em {path}";
-            try { Process.Start(new ProcessStartInfo(path) { UseShellExecute = true }); } catch { }
+            ShellRunner.OpenUrl(path);
         }
         catch (Exception ex)
         {
