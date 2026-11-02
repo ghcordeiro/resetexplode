@@ -131,7 +131,7 @@ public partial class MainWindow : Window
         Closed += (_, _) =>
         {
             _timer.Stop(); _overlayTimer?.Stop();
-            StopSession("RESET EXPLODE fechado");
+            StopSession("RESET EXPLODE fechado", wait: true);
             _stress.Stop(); _burn.Stop(); _benchCts?.Cancel();
             _overlay?.Close();
             _toast?.Close();

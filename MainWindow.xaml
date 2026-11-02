@@ -1566,6 +1566,7 @@
                                                         <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextWrapping="Wrap"/>
                                                         <TextBlock Text="{Binding When}" Foreground="{DynamicResource Muted}" FontSize="12" Margin="0,2,0,0"/>
                                                         <TextBlock Text="{Binding Stats}" FontFamily="{StaticResource Mono}" FontSize="12" Margin="0,2,0,0"/>
+                                                        <TextBlock Text="{Binding AvisosText}" FontSize="12" TextWrapping="Wrap" Margin="0,4,12,0"/>
                                                         <TextBlock Text="{Binding Size}" Foreground="{DynamicResource Faint}" FontSize="11" Margin="0,2,0,0"/>
                                                     </StackPanel>
                                                     <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">

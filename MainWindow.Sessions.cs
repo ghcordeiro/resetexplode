@@ -15,8 +15,9 @@ public partial class MainWindow
     private GameSession? _session;
     private List<SensorRow> _sessionRows = new();
     private Process? _sessionProc;
-    private TimeSpan _sessionCpu0;
-    private DateTime _sessionCpuAt;
+    private List<SessionProbe> _probes = new();
+    private PcieProbe? _pcieProbe;
+    private Task<SessionContext>? _sessionCtx;
     private int _candidatePid, _candidateSecs, _lastFramePid;
     private static readonly TimeSpan MaxSession = TimeSpan.FromHours(6);
 
@@ -81,13 +82,34 @@ public partial class MainWindow
             var proc = Process.GetProcessById(pid);
             string exe = "";
             try { exe = proc.MainModule?.FileName ?? ""; } catch { }
+            var gpu = _gpus.FirstOrDefault();
+            IntPtr nvml = gpu?.NvmlHandle ?? IntPtr.Zero;
+            _pcieProbe = new PcieProbe(nvml);
+            _probes = new List<SessionProbe> { new GameProcessProbe(), _pcieProbe };
+
             _sessionRows = _monitor.Rows.ToList();
-            _session = new GameSession(GameName(proc, exe), exe, pid, _sessionRows.Select(SensorColumn).ToList());
-            _frames.Present += _session.OnPresent;
+            var session = new GameSession(GameName(proc, exe), exe, pid, _sessionRows.Select(SensorColumn).ToList(),
+                                          _probes.SelectMany(p => p.Columns).ToList());
+            foreach (var probe in _probes)
+                try { probe.Start(pid, exe, session.Folder); }
+                catch (Exception ex) { session.Note("sonda_falhou", $"{probe.GetType().Name}: {ex.Message}"); }
+
+            _session = session;
             _sessionProc = proc;
-            _sessionCpu0 = proc.TotalProcessorTime;
-            _sessionCpuAt = DateTime.Now;
-            AddEvent("", "Gravação de sessão", $"{_session.Game} · começou", "ok");
+            _frames.Present += session.OnPresent;
+
+            // Contexto (RAM, monitor, opções do Windows, disco...) em segundo plano: WMI pode levar 1–2 s e o jogo está rodando.
+            IntPtr hwnd = ForegroundPid() == pid ? GetForegroundWindow() : proc.MainWindowHandle;
+            string? cpu = InfoValue("Processador"), gpuName = gpu?.Name, driver = nvml != IntPtr.Zero ? Nvml.DriverVersion() : null;
+            string folder = session.Folder;
+            _sessionCtx = Task.Run(() =>
+            {
+                var tweaksOn = WindowsTweaks.All().Where(t => { try { return t.Read() == true; } catch { return false; } }).Select(t => t.Title).ToList();
+                var ctx = SessionContextCollector.Collect(exe, hwnd, nvml, cpu, gpuName, driver, tweaksOn);
+                try { ctx.Save(folder); } catch { }
+                return ctx;
+            });
+            AddEvent("", "Gravação de sessão", $"{session.Game} · começou", "ok");
         }
         catch (Exception ex)
         {
@@ -100,24 +122,18 @@ public partial class MainWindow
     private void RecordSecond()
     {
         var s = _session!;
-        var p = _sessionProc!;
         bool exited;
-        try { p.Refresh(); exited = p.HasExited; } catch { exited = true; }
+        try { _sessionProc!.Refresh(); exited = _sessionProc.HasExited; } catch { exited = true; }
         if (exited) { StopSession("o jogo fechou"); return; }
         if (s.Elapsed >= MaxSession) { StopSession("limite de 6 h"); return; }
 
-        double? cpuPct = null, ramMb = null; int? threads = null;
-        try
+        var metrics = new double?[_probes.Sum(p => p.Columns.Count)];
+        int offset = 0;
+        foreach (var probe in _probes)
         {
-            var now = DateTime.Now;
-            var cpu = p.TotalProcessorTime;
-            double wall = (now - _sessionCpuAt).TotalMilliseconds;
-            if (wall > 0) cpuPct = 100.0 * (cpu - _sessionCpu0).TotalMilliseconds / (wall * Environment.ProcessorCount);
-            _sessionCpu0 = cpu; _sessionCpuAt = now;
-            ramMb = p.WorkingSet64 / 1048576.0;
-            threads = p.Threads.Count;
+            try { probe.Fill(metrics, offset); } catch { }
+            offset += probe.Columns.Count;
         }
-        catch { }
 
         var gpu = _gpus.FirstOrDefault();
         int? pstate = null; string? perfCap = null; bool thermal = false;
@@ -129,14 +145,15 @@ public partial class MainWindow
         var limiter = BottleneckAnalyzer.Sample(_monitor, gpu, _frames.GetStats(s.Pid)).Classify();
         bool foreground = ForegroundPid() == s.Pid;
 
-        s.Tick(new SessionSecond(foreground, limiter.ToString(), pstate, perfCap, thermal, cpuPct, ramMb, threads,
+        s.Tick(new SessionSecond(foreground, limiter.ToString(), pstate, perfCap, thermal,
             _monitor.CpuTemperature, MainGpuTemp(), _monitor.CpuPower, MainGpuPower(),
-            _sessionRows.Select(r => r.RawValue).ToList()));
+            metrics, _sessionRows.Select(r => r.RawValue).ToList()));
 
         if (PageSessions.IsVisible) UpdateSessionStatus();
     }
 
-    private void StopSession(string reason)
+    /// <param name="wait">true ao fechar o app: termina de salvar antes de o processo acabar.</param>
+    private void StopSession(string reason, bool wait = false)
     {
         var s = _session;
         if (s == null) return;
@@ -144,25 +161,58 @@ public partial class MainWindow
         _session = null;
         _sessionProc?.Dispose();
         _sessionProc = null;
-        try
-        {
-            var errors = OcCheck.ErrorsSince(s.Start);
-            var sum = s.Finish(reason, new Dictionary<string, object?>
-            {
-                ["cpu"] = InfoValue("Processador"),
-                ["gpu"] = _gpus.FirstOrDefault()?.Name,
-                ["ram"] = InfoValue("Memória RAM"),
-                ["erros_whea"] = errors.Whea,
-                ["resets_driver_video"] = errors.GpuResets,
-                ["ultimo_erro_hardware"] = errors.LastDetail,
-            });
-            AddEvent("", "Gravação de sessão", $"{s.Game} · {sum.AvgFps:0} FPS, 1% low {sum.Low1Fps:0}", "ok");
-        }
-        catch (Exception ex) { AddEvent("", "Gravação de sessão", $"{s.Game} · falha ao salvar: {ex.Message}", "abortado"); }
-        try { SessionStore.Prune(); } catch { }
+        var probes = _probes;
+        var pcie = _pcieProbe;
+        var ctxTask = _sessionCtx;
+        _probes = new();
+        _pcieProbe = null;
+        _sessionCtx = null;
+        string? ram = InfoValue("Memória RAM");
         _candidatePid = 0; _candidateSecs = 0;
-        if (PageSessions.IsVisible) RefreshSessionList();
         UpdateSessionStatus();
+
+        FrameSummary? Save()
+        {
+            var extra = new Dictionary<string, object?>();
+            foreach (var probe in probes)
+            {
+                try { foreach (var kv in probe.Finish()) extra[kv.Key] = kv.Value; } catch { }
+                try { probe.Dispose(); } catch { }
+            }
+            SessionContext? ctx = null;
+            try { if (ctxTask != null && ctxTask.Wait(TimeSpan.FromSeconds(20))) ctx = ctxTask.Result; } catch { }
+            if (ctx != null)
+            {
+                ctx.PcieGeracaoVista = pcie?.MaxGen;
+                ctx.PcieLarguraVista = pcie?.MaxWidth;
+                extra["cpu"] = ctx.Cpu;
+                extra["gpu"] = ctx.Gpu;
+                extra["avisos"] = SessionAdvice.Evaluate(ctx).Select(a => a.ToString()).ToList();
+                try { ctx.Save(s.Folder); } catch { }
+            }
+            extra["ram"] = ram;
+            var errors = OcCheck.ErrorsSince(s.Start);
+            extra["erros_whea"] = errors.Whea;
+            extra["resets_driver_video"] = errors.GpuResets;
+            extra["ultimo_erro_hardware"] = errors.LastDetail;
+            var sum = s.Finish(reason, extra);
+            try { SessionStore.Prune(); } catch { }
+            return sum;
+        }
+
+        void Done(FrameSummary? sum, Exception? ex)
+        {
+            AddEvent("", "Gravação de sessão", ex == null && sum != null
+                ? $"{s.Game} · {sum.AvgFps:0} FPS, 1% low {sum.Low1Fps:0}" : $"{s.Game} · falha ao salvar: {ex?.Message}", ex == null ? "ok" : "abortado");
+            if (PageSessions.IsVisible) RefreshSessionList();
+        }
+
+        if (wait)
+        {
+            try { Save(); } catch { }
+            return;
+        }
+        Task.Run(Save).ContinueWith(t => Dispatcher.BeginInvoke(() => Done(t.IsFaulted ? null : t.Result, t.Exception?.GetBaseException())));
     }
 
     private void UpdateSessionStatus()

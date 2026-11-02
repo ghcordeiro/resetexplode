@@ -6,12 +6,14 @@ using System.Text.Json;
 
 namespace ResetExplode;
 
-/// <summary>Uma leitura por segundo de tudo que não é frame (montada pela tela a partir dos sensores, NVML e do processo).</summary>
+/// <summary>
+/// Uma leitura por segundo de tudo que não é frame. <paramref name="Metrics"/> segue a ordem das colunas de métricas
+/// passadas ao criar a sessão (sondas: processo do jogo, PCIe, rede...); <paramref name="Sensors"/>, a das colunas de sensores.
+/// </summary>
 public sealed record SessionSecond(
     bool Foreground, string Limiter, int? GpuPState, string? GpuPerfCap, bool GpuThermalCap,
-    double? ProcCpuPct, double? ProcRamMb, int? ProcThreads,
     float? CpuTemp, float? GpuTemp, float? CpuPower, float? GpuPower,
-    IReadOnlyList<float?> Sensors);
+    IReadOnlyList<double?> Metrics, IReadOnlyList<float?> Sensors);
 
 /// <summary>Resumo dos frames: FPS médio, lows e percentis de frametime.</summary>
 public sealed record FrameSummary(long Frames, double Seconds, double AvgFps, double Low1Fps, double Low01Fps,
@@ -47,7 +49,7 @@ public sealed class GameSession : IDisposable
     private float _maxCpuTemp, _maxGpuTemp;
     private double _sumCpuPower, _sumGpuPower; private int _nCpuPower, _nGpuPower;
 
-    public GameSession(string game, string exe, int pid, IReadOnlyList<string> sensorColumns)
+    public GameSession(string game, string exe, int pid, IReadOnlyList<string> sensorColumns, IReadOnlyList<string> metricColumns)
     {
         Game = game; Exe = exe; Pid = pid;
         string safe = string.Concat(game.Select(c => Path.GetInvalidFileNameChars().Contains(c) ? '_' : c)).Trim();
@@ -60,8 +62,8 @@ public sealed class GameSession : IDisposable
         _sensors.WriteLine(string.Join(',', new[]
         {
             "t_s", "fps", "frametime_mediana_ms", "frametime_max_ms", "frames", "primeiro_plano", "limitador",
-            "gpu_pstate", "gpu_perfcap", "jogo_cpu_pct", "jogo_ram_mb", "jogo_threads"
-        }.Concat(sensorColumns).Select(Csv)));
+            "gpu_pstate", "gpu_perfcap"
+        }.Concat(metricColumns).Concat(sensorColumns).Select(Csv)));
         _events = Open("eventos.csv");
         _events.WriteLine("t_s,tipo,detalhe");
         Event("inicio", $"{game} ({Path.GetFileName(exe)}, PID {pid})");
@@ -120,8 +122,8 @@ public sealed class GameSession : IDisposable
         {
             F(ts, "0.0"), F(fps, "0.0"), F(median, "0.###"), F(fts.Count > 0 ? fts.Max() : 0, "0.###"), fts.Count.ToString(CultureInfo.InvariantCulture),
             s.Foreground ? "1" : "0", s.Limiter, s.GpuPState?.ToString(CultureInfo.InvariantCulture) ?? "", Csv(s.GpuPerfCap ?? ""),
-            F(s.ProcCpuPct, "0.0"), F(s.ProcRamMb, "0"), s.ProcThreads?.ToString(CultureInfo.InvariantCulture) ?? "",
         };
+        row.AddRange(s.Metrics.Select(v => F(v, "0.###")));
         row.AddRange(s.Sensors.Select(v => F(v, "0.###")));
         _sensors.WriteLine(string.Join(',', row));
 
@@ -171,6 +173,9 @@ public sealed class GameSession : IDisposable
             try { w.Dispose(); } catch { }
     }
 
+    /// <summary>Registra um evento avulso (ex.: uma sonda que não conseguiu começar).</summary>
+    public void Note(string type, string detail) => Event(type, detail);
+
     private void Event(string type, string detail)
     {
         _events.WriteLine($"{F(Elapsed.TotalSeconds, "0.0")},{type},{Csv(detail)}");
@@ -212,8 +217,10 @@ public sealed class GameSession : IDisposable
 /// <summary>Sessões gravadas (lidas do resumo.json de cada pasta) e limpeza das mais antigas.</summary>
 public static class SessionStore
 {
-    public sealed record Item(string Folder, string Game, DateTime Start, double Seconds, double AvgFps, double Low1, double Low01, int Stutters, long Bytes)
+    public sealed record Item(string Folder, string Game, DateTime Start, double Seconds, double AvgFps, double Low1, double Low01, int Stutters, long Bytes,
+                              IReadOnlyList<string> Avisos)
     {
+        public string AvisosText => Avisos.Count == 0 ? "" : (Avisos.Count == 1 ? Avisos[0] : $"{Avisos.Count} avisos · {Avisos[0]}");
         public string Title => Game;
         public string When => $"{Start:dd/MM/yyyy HH:mm} · {TimeSpan.FromSeconds(Seconds):h\\:mm\\:ss}";
         public string Stats => AvgFps > 0 ? $"{AvgFps:0} FPS · 1% {Low1:0} · 0,1% {Low01:0} · {Stutters} engasgos" : "sem frames medidos";
@@ -232,12 +239,14 @@ public static class SessionStore
             {
                 long bytes = new DirectoryInfo(dir).GetFiles().Sum(f => f.Length);
                 string resumo = Path.Combine(dir, "resumo.json");
-                if (!File.Exists(resumo)) { list.Add(new Item(dir, Path.GetFileName(dir) + " (incompleta)", Directory.GetCreationTime(dir), 0, 0, 0, 0, 0, bytes)); continue; }
+                if (!File.Exists(resumo)) { list.Add(new Item(dir, Path.GetFileName(dir) + " (incompleta)", Directory.GetCreationTime(dir), 0, 0, 0, 0, 0, bytes, Array.Empty<string>())); continue; }
                 using var doc = JsonDocument.Parse(File.ReadAllText(resumo));
                 var r = doc.RootElement;
                 double D(string k) => r.TryGetProperty(k, out var e) && e.ValueKind == JsonValueKind.Number ? e.GetDouble() : 0;
+                var avisos = r.TryGetProperty("avisos", out var av) && av.ValueKind == JsonValueKind.Array
+                    ? av.EnumerateArray().Select(x => x.GetString() ?? "").Where(x => x.Length > 0).ToList() : new List<string>();
                 list.Add(new Item(dir, r.GetProperty("jogo").GetString() ?? "?", DateTime.Parse(r.GetProperty("inicio").GetString()!, CultureInfo.InvariantCulture),
-                    D("duracao_s"), D("fps_medio"), D("low_1pct_fps"), D("low_01pct_fps"), (int)D("engasgos"), bytes));
+                    D("duracao_s"), D("fps_medio"), D("low_1pct_fps"), D("low_01pct_fps"), (int)D("engasgos"), bytes, avisos));
             }
             catch { }
         }

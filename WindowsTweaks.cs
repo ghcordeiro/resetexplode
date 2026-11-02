@@ -441,6 +441,13 @@ public static class WindowsTweaks
 
     // ------------------------------------------------------------------ plano de energia
 
+    /// <summary>Nome do plano de energia ativo, como o Windows mostra ("Equilibrado", "Alto desempenho"...).</summary>
+    internal static string? ActiveSchemeName()
+    {
+        var m = System.Text.RegularExpressions.Regex.Match(PowerCfg("/getactivescheme"), @"\(([^)]+)\)\s*$");
+        return m.Success ? m.Groups[1].Value.Trim() : null;
+    }
+
     private static string? ActiveScheme()
     {
         var m = System.Text.RegularExpressions.Regex.Match(PowerCfg("/getactivescheme"), @"[0-9a-fA-F\-]{36}");
