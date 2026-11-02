@@ -32,6 +32,8 @@ public sealed class SessionContext
     public DiscoJogo? Disco { get; set; }
     /// <summary>Afinidade de núcleos do jogo ("todos" ou a lista), preenchida pela Fase 6.</summary>
     public string? Afinidade { get; set; }
+    /// <summary>Último teste avulso de mouse/teclado (aba Sessões).</summary>
+    public TesteEntrada? EntradaMedida { get; set; }
     /// <summary>Último teste de atraso com o testador (Arduino ou câmera), se houver.</summary>
     public Dictionary<string, object?>? LatenciaMedida { get; set; }
     public List<string> ErrosColeta { get; set; } = new();
@@ -58,6 +60,15 @@ public sealed class SessionContext
         public int LarguraNativa { get; set; }
         public int AlturaNativa { get; set; }
         public string Conexao { get; set; } = ""; // HDMI, DisplayPort, DVI, VGA, Interna...
+    }
+
+    public sealed class TesteEntrada
+    {
+        public DateTime Data { get; set; }
+        public double? MouseHz { get; set; }
+        public string? MouseVeredito { get; set; }
+        public double? TecladoHz { get; set; }
+        public string? TecladoVeredito { get; set; }
     }
 
     public sealed class DiscoJogo

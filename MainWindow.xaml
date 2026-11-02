@@ -1545,6 +1545,24 @@
                             </Grid>
                         </Border>
 
+                        <Border Style="{StaticResource CardBorder}" Margin="0,0,0,14">
+                            <StackPanel>
+                                <TextBlock Text="MOUSE E TECLADO" Style="{StaticResource Label}"/>
+                                <TextBlock Foreground="{DynamicResource Muted}" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,10">
+                                    Mede quantas vezes por segundo o mouse e o teclado realmente mandam dados ao PC (polling rate) e se o ritmo é estável.
+                                    Durante as sessões o mouse é medido sozinho. O RESET EXPLODE nunca registra quais teclas você aperta: só o instante de cada evento.
+                                </TextBlock>
+                                <StackPanel Orientation="Horizontal">
+                                    <Button x:Name="BtnMouseTest" Style="{StaticResource OutlineButton}" Content="TESTAR MOUSE (5 s)" Padding="14,7" Margin="0,0,8,0" Click="BtnMouseTest_Click"/>
+                                    <Button x:Name="BtnKeyTest" Style="{StaticResource OutlineButton}" Content="TESTAR TECLADO (5 s)" Padding="14,7" Click="BtnKeyTest_Click"/>
+                                </StackPanel>
+                                <TextBlock x:Name="InputResult" TextWrapping="Wrap" FontWeight="SemiBold" Margin="0,10,0,0"/>
+                                <TextBlock x:Name="InputLast" Foreground="{DynamicResource Faint}" FontSize="11" TextWrapping="Wrap" Margin="0,6,0,0"/>
+                                <CheckBox x:Name="ChkSessKeyboard" Content="Contar eventos do teclado nas sessões (só a quantidade por segundo, nunca quais teclas)"
+                                          Margin="0,10,0,0" Click="ChkSessKeyboard_Click"/>
+                            </StackPanel>
+                        </Border>
+
                         <Border Style="{StaticResource CardBorder}">
                             <StackPanel>
                                 <Grid Margin="0,0,0,6">

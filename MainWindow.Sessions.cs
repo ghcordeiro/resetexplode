@@ -33,6 +33,8 @@ public partial class MainWindow
     private void InitSessions()
     {
         ChkAutoRecord.IsChecked = _settings.AutoRecordGames;
+        ChkSessKeyboard.IsChecked = _settings.SessionKeyboard;
+        ShowLastInputTest();
         RefreshSessionList();
         UpdateSessionStatus();
     }
@@ -86,7 +88,8 @@ public partial class MainWindow
             IntPtr nvml = gpu?.NvmlHandle ?? IntPtr.Zero;
             _pcieProbe = new PcieProbe(nvml);
             var gpuProbe = new GpuProcessProbe();
-            _probes = new List<SessionProbe> { new GameProcessProbe(), _pcieProbe, gpuProbe, new BackgroundProcessesProbe(gpuProbe), new NetworkProbe(), new PresentMonProbe() };
+            _probes = new List<SessionProbe> { new GameProcessProbe(), _pcieProbe, gpuProbe, new BackgroundProcessesProbe(gpuProbe), new NetworkProbe(), new PresentMonProbe(),
+                                             new InputProbe(_settings.SessionKeyboard) };
 
             _sessionRows = _monitor.Rows.ToList();
             var session = new GameSession(GameName(proc, exe), exe, pid, _sessionRows.Select(SensorColumn).ToList(),
@@ -103,10 +106,12 @@ public partial class MainWindow
             IntPtr hwnd = ForegroundPid() == pid ? GetForegroundWindow() : proc.MainWindowHandle;
             string? cpu = InfoValue("Processador"), gpuName = gpu?.Name, driver = nvml != IntPtr.Zero ? Nvml.DriverVersion() : null;
             string folder = session.Folder;
+            var inputTest = _settings.LastInputTest;
             _sessionCtx = Task.Run(() =>
             {
                 var tweaksOn = WindowsTweaks.All().Where(t => { try { return t.Read() == true; } catch { return false; } }).Select(t => t.Title).ToList();
                 var ctx = SessionContextCollector.Collect(exe, hwnd, nvml, cpu, gpuName, driver, tweaksOn);
+                ctx.EntradaMedida = inputTest;
                 try { ctx.Save(folder); } catch { }
                 return ctx;
             });

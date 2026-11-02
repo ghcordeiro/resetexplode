@@ -66,6 +66,9 @@ public sealed class AppSettings
     // RESET JOGOS
     /// <summary>Grava uma sessão (frames + sensores) sozinho quando um jogo em tela cheia aparece.</summary>
     public bool AutoRecordGames { get; set; } = true;
+    /// <summary>Conta eventos do teclado durante as sessões (só a quantidade, nunca quais teclas). Desligado por padrão.</summary>
+    public bool SessionKeyboard { get; set; }
+    public SessionContext.TesteEntrada? LastInputTest { get; set; }
     public Dictionary<string, GameProfile> GameProfiles { get; set; } = new();
     public List<CustomGame> CustomGames { get; set; } = new();
 
