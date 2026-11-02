@@ -49,11 +49,24 @@ App WPF (.NET 8) com:
   ventoinha, PerfCap), VRAM, CPU (uso, núcleo mais ocupado, temperatura, clock médio e máximo, consumo), RAM, nome do jogo e hora. Volta para o topo a cada troca de janela ativa
   (jogos em janela sem borda também se marcam como "sempre no topo") e fica no monitor do jogo. Não aparece em tela cheia exclusiva. O FPS de qualquer jogo é medido via ETW
   (eventos Present de DXGI/D3D9, como o PresentMon, `FrameMonitor.cs`), sem injetar nada no jogo.
-- **Sessões de jogo** (`GameSession.cs`, `MainWindow.Sessions.cs`): grava sozinho quando um jogo em tela cheia ou janela sem borda
-  entrega frames por 10 s, até ele fechar (ou à mão). Em `%AppData%\ResetExplode\sessoes\<data>_<jogo>\`: `frames.csv` (tempo de cada frame),
-  `sensores.csv` (1/s: FPS, limitador, P-state/PerfCap da GPU, CPU/RAM/threads do jogo e todos os sensores), `eventos.csv` (engasgos, alt-tab,
-  limitador térmico, CPU acima de 95 °C) e `resumo.json` (FPS médio, 1%/0,1% low, percentis de frametime, % do tempo por limitador, erros de hardware).
-  Acima de 3 GB as mais antigas são apagadas. Cada sessão tem **ANALISAR COM CLAUDE**: abre o Claude Code (sem administrador) com a sessão e os dados do PC.
+- **Sessões de jogo** (RESET JOGOS › Sessões; `GameSession.cs`, `MainWindow.Sessions.cs`, `SessionProbes*.cs`): grava sozinho quando um jogo em tela cheia
+  ou janela sem borda entrega frames por 10 s, até ele fechar (ou à mão). Em `%AppData%\ResetExplode\sessoes\<data>_<jogo>\`:
+  - `contexto.json` (`SessionContext*.cs`): configuração no início — RAM por pente (velocidade configurada × a do código do pente), GPU (Resizable BAR,
+    PCIe máximo e o maior link visto no jogo), monitor do jogo (resolução, Hz atual × máximo, nativa, HDMI/DisplayPort), VRR, plano de energia, HAGS,
+    Modo de Jogo, ajustes ligados, disco do jogo (SSD NVMe/SSD/HD/USB), afinidade e os últimos testes de mouse/teclado e de atraso. Vira **avisos**:
+    XMP/EXPO desligado, canal único, monitor abaixo da taxa máxima, PCIe reduzido, jogo em HD...
+  - `frames.csv` (tempo de cada frame, ETW) e `presentmon.csv.gz` (**PresentMon** embutido, `Tools/`: cada frame com latência até a tela, latência do PC,
+    clique até a imagem, CPU/GPU ocupadas, modo de apresentação, tearing), resumido por segundo em `exibicao.csv`.
+  - `sensores.csv` (1/s): FPS, limitador, P-state/PerfCap da GPU, CPU/RAM/commit/threads e E/S do jogo, GPU e VRAM do jogo e dos outros programas,
+    pings (roteador, 1.1.1.1 e o servidor do jogo, detectado pelo tráfego via ETW), tráfego do jogo, taxa do mouse e **todos os sensores**.
+  - `processos.csv` (a cada 5 s, quem mais usou CPU/GPU fora do jogo), `eventos.csv` (engasgos, alt-tab, limitador térmico, CPU acima de 95 °C).
+  - `resumo.json` + `laudo.txt`: **laudo automático** (`SessionAnalyzer.cs`, sem IA) com veredito e a **causa de cada engasgo** pelo segundo em que
+    aconteceu (alt-tab, disco, VRAM, RAM, temperatura, programa em segundo plano com o nome, CPU), gargalo frame a frame, fila de frames,
+    compositor do Windows, rede local × provedor, temperaturas, erros WHEA e reset do driver.
+  **COMPARAR COM A ANTERIOR** (mesmo jogo) mostra a diferença em FPS, lows, engasgos, latência e temperaturas e **o que mudou no PC** entre as duas
+  (ajustes, driver, Hz, RAM...). **ANALISAR COM CLAUDE** abre o Claude Code (sem administrador) com a sessão — ou as duas comparadas — e os dados do PC.
+  **Mouse e teclado** (`RawInputMonitor.cs`, `InputAnalysis.cs`): taxa real de relatórios (polling rate) e estabilidade, nas sessões e em testes de 5 s;
+  só o instante de cada evento é lido, nunca quais teclas. Acima de 3 GB as sessões mais antigas são apagadas. O app precisa estar aberto (pode minimizar).
 - **RESET BENCH** (`BenchRenderer.cs`): benchmark de CPU no princípio do Cinebench, com renderizador próprio. Path tracer monocromático
   (iluminação global, sombras suaves, metal e vidro com refração), 960×540 a 1024 amostras/pixel, imagem em blocos de 32 px
   distribuídos entre threads do centro para fora. Multi-core (todas as threads) e single-core (1 thread, imagem inteira, ~1min40s num 7700X),
@@ -84,10 +97,15 @@ App WPF (.NET 8) com:
   prioridade de jogos no MMCSS, apps da Store em segundo plano e indexação do Windows Search.
   **Ajustes que reduzem a segurança** (marcados *REDUZ SEGURANÇA*, pedem confirmação e voltam ao original ao desmarcar): desligar
   Integridade de Memória/VBS, desligar as mitigações de Spectre/Meltdown e excluir as pastas dos jogos do Defender. Nunca mexe em UAC, firewall nem Update.
+  **Cache de shaders** (`ShaderCache.cs`): tamanho por pasta (NVIDIA, AMD, Intel, DirectX) e limpeza, para quando os jogos passam a engasgar depois de atualizar o driver.
 - **RESET MAKER** (Arduino, ESP32 e conversores USB-serial):
   - *Portas COM* (`UsbCleaner.cs`): lista e remove registros de dispositivos USB/seriais ausentes ("fantasmas" de Arduino,
     ESP32, CH340, FTDI, CP210x...) e libera os números COM presos no ComDB, com backup para desfazer. Resolve a IDE do Arduino
     não achar a placa ou a porta ir para COM20+.
+  - *Atraso (Arduino)* (`LatencyTester.cs`, `LatencyWindow.cs`, `SerialLatencyLink.cs`, `Arduino/ResetLatencia`): testador de **atraso do clique até a tela**
+    com um Leonardo/Pro Micro (vira mouse USB) e um fototransistor no A0: o Arduino clica e mede em microssegundos até a tela de teste (Direct3D 11,
+    sem limite de FPS, com tearing) clarear; também mede **PC até a tela** e a resposta do pixel (10–90%). O app salva o `.ino` para carregar pela
+    Arduino IDE. Sem Arduino: modo câmera (filmar a 240 fps e contar os quadros).
   - *Drivers seriais* (`MakerDrivers.cs`, `MainWindow.Maker.cs`): diagnóstico das placas conectadas com **CH340/CH341, CP2102/CP210x,
     FTDI, Prolific PL2303 e Arduino** pelo código do Gerenciador de Dispositivos (sem driver, código 10, 43, FTDI falsificado com PID 0000),
     com orientação para cada caso; **REINSTALAR** (remove e detecta de novo); lista das versões de driver guardadas no Windows com
@@ -125,7 +143,8 @@ App WPF (.NET 8) com:
   convertidos em argumentos de inicialização no estilo Source/CS2, Unity ou Unreal) e **programas auxiliares** (ferramentas de terceiros que abrem antes do jogo
   e fecham junto). Em jogos da Steam, um botão grava os argumentos nas **opções de inicialização** (`localconfig.vdf`, com backup, fechando a Steam antes).
   O botão JOGAR aplica o perfil, inicia e desfaz o que for temporário quando o jogo fecha. Jogos, launchers e programas auxiliares abrem
-  **sem privilégio de administrador** (pelo Explorer, `ShellRunner.cs`).
+  **sem privilégio de administrador** (pelo Explorer, `ShellRunner.cs`). **Núcleos da CPU** por jogo (`CpuTopology.cs`): só os com 3D V-Cache (Ryzen X3D de 2 CCDs)
+  ou só P-cores (Intel híbrido). **NVIDIA** (`NvidiaProfiles.cs`, NVAPI): limite de FPS e modo de baixa latência gravados no perfil do driver para o `.exe`.
 
 ## Interface
 - Visual preto e branco minimalista em **blocos** (cartões arredondados, inspirado em painéis de dashboard). Um único menu lateral
@@ -133,10 +152,10 @@ App WPF (.NET 8) com:
   - *Visão geral* (`MainWindow.Dash.cs`): gráfico de área CPU × GPU (temperatura, carga ou consumo; 1/5/15 min),
     desempenho do RESET BENCH, tabela de componentes, anéis de RAM/VRAM/disco, eventos recentes e saúde do PC.
   - **RESET EXPLODE** · Sistema, Sensores, Placa de vídeo, Discos, Energia, Rede.
-  - **RESET JOGOS** · Biblioteca, FPS estimado, Gargalo, Overlay.
+  - **RESET JOGOS** · Biblioteca, FPS estimado, Gargalo, Overlay, Sessões.
   - **RESET DESEMPENHO** · Benchmark, Stress test, Overclock.
   - **RESET FERRAMENTAS** · Otimização, Inicialização, Instalar apps, Drivers, Integração.
-  - **RESET MAKER** · Portas COM, Drivers seriais.
+  - **RESET MAKER** · Portas COM, Drivers seriais, Atraso (Arduino).
 - Botão de **modo escuro/claro** no canto superior direito (`ThemeManager.cs`); a escolha fica salva. O overlay de jogos e os avisos de dispositivo ficam sempre escuros.
 - Leitura ao vivo de temperatura e carga da CPU e da GPU sempre visível no rodapé do menu.
 - Sensores com busca e filtros por tipo (chips); tema em `Theme.xaml`.
@@ -146,6 +165,7 @@ App WPF (.NET 8) com:
 - Sensores: [LibreHardwareMonitorLib](https://github.com/LibreHardwareMonitor/LibreHardwareMonitor) (MPL 2.0) — mantenha o aviso de licença ao distribuir.
 - Informações do sistema: WMI do Windows.
 - Medição de FPS: [TraceEvent](https://github.com/microsoft/perfview) (MIT), da Microsoft, para ler eventos ETW.
+- Sessões de jogo: [PresentMon](https://github.com/GameTechDev/PresentMon) 2.6.0 (MIT), da Intel, embutido em `Tools/` (veja `Tools/LEIA-ME.md`).
 - Renderização do stress de GPU: [Vortice.Windows](https://github.com/amerkoleci/Vortice.Windows) (MIT), bindings de Direct3D 11 para .NET. Direct3D 12 e DXC (compilador de shaders da Microsoft) também via Vortice, no teste de ray tracing.
 
 ## Requisitos
