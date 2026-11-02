@@ -24,19 +24,31 @@ public abstract class SessionProbe : IDisposable
     public virtual void Dispose() { }
 }
 
-/// <summary>CPU, memória e threads do processo do jogo (a E/S entra na Fase 2).</summary>
+/// <summary>
+/// CPU, memória, threads e E/S do processo do jogo. A E/S (GetProcessIoCounters) soma disco e rede do processo,
+/// mas num jogo é quase toda leitura de arquivos: picos coincidem com carregamento de mapa/texturas.
+/// </summary>
 public sealed class GameProcessProbe : SessionProbe
 {
     private Process? _p;
+    private Microsoft.Win32.SafeHandles.SafeProcessHandle? _h;
     private TimeSpan _cpu0;
     private long _t0;
+    private ulong _read0, _write0;
 
-    public override IReadOnlyList<string> Columns { get; } = new[] { "jogo_cpu_pct", "jogo_ram_mb", "jogo_commit_mb", "jogo_threads" };
+    public override IReadOnlyList<string> Columns { get; } = new[]
+    {
+        "jogo_cpu_pct", "jogo_ram_mb", "jogo_commit_mb", "jogo_threads", "jogo_io_leitura_mb_s", "jogo_io_escrita_mb_s"
+    };
 
     public override void Start(int pid, string exe, string folder)
     {
         _p = Process.GetProcessById(pid);
         try { _cpu0 = _p.TotalProcessorTime; } catch { }
+        // Só "consulta limitada": é o acesso que anti-cheats costumam liberar.
+        _h = OpenProcess(0x1000 /* PROCESS_QUERY_LIMITED_INFORMATION */, false, pid);
+        if (_h.IsInvalid) { _h.Dispose(); _h = null; }
+        else if (GetProcessIoCounters(_h, out var io)) { _read0 = io.ReadTransferCount; _write0 = io.WriteTransferCount; }
         _t0 = Stopwatch.GetTimestamp();
     }
 
@@ -53,11 +65,29 @@ public sealed class GameProcessProbe : SessionProbe
             v[o + 1] = _p.WorkingSet64 / 1048576.0;
             v[o + 2] = _p.PrivateMemorySize64 / 1048576.0;
             v[o + 3] = _p.Threads.Count;
+            if (_h != null && wallMs > 0 && GetProcessIoCounters(_h, out var io))
+            {
+                double s = wallMs / 1000;
+                v[o + 4] = (io.ReadTransferCount - _read0) / 1048576.0 / s;
+                v[o + 5] = (io.WriteTransferCount - _write0) / 1048576.0 / s;
+                _read0 = io.ReadTransferCount; _write0 = io.WriteTransferCount;
+            }
         }
         catch { /* anti-cheat pode negar acesso ao processo: fica sem essas colunas */ }
     }
 
-    public override void Dispose() => _p?.Dispose();
+    public override void Dispose() { _p?.Dispose(); _h?.Dispose(); }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct IO_COUNTERS
+    {
+        public ulong ReadOperationCount, WriteOperationCount, OtherOperationCount, ReadTransferCount, WriteTransferCount, OtherTransferCount;
+    }
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern Microsoft.Win32.SafeHandles.SafeProcessHandle OpenProcess(uint access, bool inherit, int pid);
+    [DllImport("kernel32.dll")]
+    private static extern bool GetProcessIoCounters(Microsoft.Win32.SafeHandles.SafeProcessHandle process, out IO_COUNTERS counters);
 }
 
 /// <summary>

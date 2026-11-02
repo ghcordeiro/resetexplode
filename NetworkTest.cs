@@ -118,20 +118,30 @@ public static class NetworkTest
         _ => t.ToString()
     };
 
-    public static async Task<List<DiskHealthCard>> Run(Action<string, double> progress, CancellationToken ct)
+    /// <summary>Adaptador conectado com gateway IPv4 (o mais rápido, se houver Wi-Fi e cabo), ou null.</summary>
+    public static NetworkInterface? ActiveInterface()
     {
-        progress("Procurando a conexão ativa…", 0.02);
-        NetworkInterface? nic = null;
         try
         {
-            nic = NetworkInterface.GetAllNetworkInterfaces()
+            return NetworkInterface.GetAllNetworkInterfaces()
                 .Where(n => n.OperationalStatus == OperationalStatus.Up
                             && n.NetworkInterfaceType is not (NetworkInterfaceType.Loopback or NetworkInterfaceType.Tunnel)
                             && n.GetIPProperties().GatewayAddresses.Any(g => g.Address.AddressFamily == AddressFamily.InterNetwork
                                                                               && !g.Address.Equals(IPAddress.Any)))
                 .OrderByDescending(n => n.Speed).FirstOrDefault();
         }
-        catch { }
+        catch { return null; }
+    }
+
+    /// <summary>IPv4 do roteador da conexão ativa.</summary>
+    public static IPAddress? DefaultGateway() =>
+        ActiveInterface()?.GetIPProperties().GatewayAddresses
+            .FirstOrDefault(g => g.Address.AddressFamily == AddressFamily.InterNetwork && !g.Address.Equals(IPAddress.Any))?.Address;
+
+    public static async Task<List<DiskHealthCard>> Run(Action<string, double> progress, CancellationToken ct)
+    {
+        progress("Procurando a conexão ativa…", 0.02);
+        NetworkInterface? nic = ActiveInterface();
         if (nic == null)
             return new() { new DiskHealthCard
             {
