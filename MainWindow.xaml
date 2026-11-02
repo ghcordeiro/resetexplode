@@ -323,6 +323,12 @@
                                     <TextBlock Text="Drivers seriais" VerticalAlignment="Center"/>
                                 </StackPanel>
                             </RadioButton>
+                            <RadioButton x:Name="NavLatency" Style="{StaticResource NavItem}" Tag="PageLatency" Checked="Nav_Checked">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="&#xE916;" FontFamily="{StaticResource Icons}" FontSize="14" Width="28" VerticalAlignment="Center"/>
+                                    <TextBlock Text="Atraso (Arduino)" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </RadioButton>
                             </StackPanel>
                         </StackPanel>
                     </ScrollViewer>
@@ -1544,6 +1550,76 @@
                 </ScrollViewer>
 
                 <!-- ===== OVERLAY ===== -->
+                <!-- ===== RESET MAKER · ATRASO (testador com Arduino) ===== -->
+                <ScrollViewer x:Name="PageLatency" Visibility="Collapsed" VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="36,30,36,30">
+                        <StackPanel Margin="0,0,0,20">
+                            <TextBlock Text="Atraso (Arduino)" Style="{StaticResource H1}"/>
+                            <TextBlock Text="Mede de verdade quanto tempo passa do clique até a imagem mudar na tela" Style="{StaticResource Sub}" TextWrapping="Wrap"/>
+                        </StackPanel>
+
+                        <Border Style="{StaticResource CardBorder}" Margin="0,0,0,14">
+                            <StackPanel>
+                                <TextBlock Text="1 · MONTAGEM (UMA VEZ)" Style="{StaticResource Label}"/>
+                                <TextBlock TextWrapping="Wrap" FontSize="12.5" Margin="0,4,0,8">
+                                    Peças (~R$ 50): Arduino <Bold>Leonardo</Bold>, <Bold>Pro Micro</Bold> ou <Bold>Micro</Bold> (precisam de USB nativo, ATmega32u4: o Uno não serve),
+                                    um fototransistor <Bold>TEPT5700</Bold> ou <Bold>TEPT4400</Bold> e um resistor de <Bold>10 kΩ</Bold>.
+                                    Ligação: perna longa do fototransistor no <Bold>5V</Bold>, perna curta no <Bold>A0</Bold>, resistor do <Bold>A0</Bold> para o <Bold>GND</Bold>.
+                                    LDR comum é lento demais e distorce o resultado.
+                                </TextBlock>
+                                <TextBlock Foreground="{DynamicResource Muted}" TextWrapping="Wrap" FontSize="12" Margin="0,0,0,10">
+                                    Grave o programa do testador no Arduino pela Arduino IDE (RESET MAKER › Drivers seriais instala a IDE): abra o ResetLatencia.ino,
+                                    escolha a placa (Arduino Leonardo; para Pro Micro também) e clique em Carregar. Na hora do teste, prenda o sensor no CENTRO da tela
+                                    (fita ou elástico), virado para ela, e deixe o brilho do monitor no máximo.
+                                </TextBlock>
+                                <WrapPanel>
+                                    <Button Style="{StaticResource OutlineButton}" Content="SALVAR O PROGRAMA DO ARDUINO (.INO)" Padding="14,8" Click="BtnLatSaveSketch_Click"/>
+                                </WrapPanel>
+                                <TextBlock x:Name="LatSketchStatus" Foreground="{DynamicResource Muted}" FontSize="12" TextWrapping="Wrap" Margin="0,8,0,0"/>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Style="{StaticResource CardBorder}" Margin="0,0,0,14">
+                            <StackPanel>
+                                <TextBlock Text="2 · TESTE" Style="{StaticResource Label}"/>
+                                <StackPanel Orientation="Horizontal" Margin="0,6,0,10">
+                                    <ComboBox x:Name="LatPorts" MinWidth="320" Margin="0,0,8,0"/>
+                                    <Button Style="{StaticResource OutlineButton}" Content="PROCURAR O TESTADOR" Padding="12,6" Click="BtnLatFind_Click"/>
+                                </StackPanel>
+                                <WrapPanel>
+                                    <Button x:Name="BtnLatClick" Style="{StaticResource PrimaryButton}" Content="CLIQUE ATÉ A TELA (50×)" Padding="14,8" Margin="0,0,8,0" Click="BtnLatClick_Click"/>
+                                    <Button x:Name="BtnLatDisplay" Style="{StaticResource OutlineButton}" Content="PC ATÉ A TELA (50×)" Padding="14,8" Click="BtnLatDisplay_Click"/>
+                                </WrapPanel>
+                                <TextBlock Foreground="{DynamicResource Faint}" FontSize="11" TextWrapping="Wrap" Margin="0,8,0,0">
+                                    A tela fica preta e pisca branco a cada medição (~30 s). Não mexa no mouse. ESC cancela.
+                                    "Clique até a tela" é o atraso total que você sente; "PC até a tela" é só o caminho do frame (driver, Windows, monitor).
+                                    A diferença entre os dois é o mouse + Windows.
+                                </TextBlock>
+                                <TextBlock x:Name="LatStatus" FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,10,0,0"/>
+                                <TextBlock x:Name="LatResult" TextWrapping="Wrap" Margin="0,6,0,0"/>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Style="{StaticResource CardBorder}">
+                            <StackPanel>
+                                <TextBlock Text="SEM ARDUINO · CÂMERA DO CELULAR" Style="{StaticResource Label}"/>
+                                <TextBlock TextWrapping="Wrap" FontSize="12.5" Margin="0,4,0,10">
+                                    Abra a tela de teste, ponha o celular filmando em câmera lenta (240 fps) pegando o mouse e a tela juntos e clique algumas vezes.
+                                    No vídeo, conte os quadros entre o botão do mouse afundar e a tela ficar branca. Precisão de ~4 ms por quadro.
+                                </TextBlock>
+                                <WrapPanel>
+                                    <Button Style="{StaticResource OutlineButton}" Content="ABRIR A TELA DE TESTE" Padding="14,8" Margin="0,0,20,0" Click="BtnLatCamera_Click"/>
+                                    <TextBlock Text="Quadros" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                    <TextBox x:Name="LatCamFrames" Width="60" Margin="0,0,14,0" TextChanged="LatCam_Changed"/>
+                                    <TextBlock Text="FPS da câmera" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                    <TextBox x:Name="LatCamFps" Width="60" Text="240" TextChanged="LatCam_Changed"/>
+                                </WrapPanel>
+                                <TextBlock x:Name="LatCamResult" FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,8,0,0"/>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </ScrollViewer>
+
                 <!-- ===== SESSÕES (gravação de tudo durante o jogo) ===== -->
                 <ScrollViewer x:Name="PageSessions" Visibility="Collapsed" VerticalScrollBarVisibility="Auto">
                     <StackPanel Margin="36,30,36,30">

@@ -35,7 +35,7 @@ public sealed class SessionContext
     /// <summary>Último teste avulso de mouse/teclado (aba Sessões).</summary>
     public TesteEntrada? EntradaMedida { get; set; }
     /// <summary>Último teste de atraso com o testador (Arduino ou câmera), se houver.</summary>
-    public Dictionary<string, object?>? LatenciaMedida { get; set; }
+    public LatencyRecord? LatenciaMedida { get; set; }
     public List<string> ErrosColeta { get; set; } = new();
 
     public sealed class ModuloRam

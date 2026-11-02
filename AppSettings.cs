@@ -74,6 +74,8 @@ public sealed class AppSettings
     /// <summary>Conta eventos do teclado durante as sessões (só a quantidade, nunca quais teclas). Desligado por padrão.</summary>
     public bool SessionKeyboard { get; set; }
     public SessionContext.TesteEntrada? LastInputTest { get; set; }
+    public LatencyRecord? LastLatency { get; set; }
+    public string? LatencyPort { get; set; }
     public Dictionary<string, GameProfile> GameProfiles { get; set; } = new();
     public List<CustomGame> CustomGames { get; set; } = new();
 

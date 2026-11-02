@@ -32,6 +32,8 @@
   <!-- Ferramentas de terceiros embutidas (Tools\LEIA-ME.md): extraídas e conferidas por hash antes de rodar. -->
   <ItemGroup>
     <EmbeddedResource Include="Tools\**\*" Exclude="Tools\*.md" LogicalName="Tools/%(RecursiveDir)%(Filename)%(Extension)" />
+    <!-- Programa do testador de atraso (RESET MAKER › Atraso): o app grava o .ino para o usuário carregar no Arduino. -->
+    <EmbeddedResource Include="Arduino\**\*.ino" LogicalName="Arduino/%(RecursiveDir)%(Filename)%(Extension)" />
   </ItemGroup>
 
   <!-- iCUE SDK da Corsair (RESET INTEGRAÇÃO): se a DLL estiver em Native\, ela vai junto do .exe. Não é versionada no git. -->
