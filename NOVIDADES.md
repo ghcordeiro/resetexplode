@@ -12,6 +12,16 @@ Versão pessoal do RESET EXPLODE, só para CS2 neste PC. Mede a estabilidade do 
   (nome de usuário, pasta do perfil e nome do PC são trocados por marcadores). Sem token configurado, ficam guardados e vão depois.
 - Na primeira vez, cole um token "fine-grained" do GitHub com acesso só ao repositório `resetexplode` e permissão **Issues: Read and write**.
 
+**Novo nesta versão**
+- **TESTE DE RUÍDO** e **repetir N**: a captura se rearma sozinha depois de cada execução; no fim diz se o benchmark varia até 5% (confiável).
+- **Matriz guiada**: o passo a passo do PRD dentro do app. USAR O PRÓXIMO PASSO preenche o perfil; com 3 execuções válidas o app decide
+  (venceu → vira a linha de base; perdeu ou dentro do ruído → reverta).
+- **VALE COMPRAR?**: 5500X3D e 32 GB pelas regras do PRD. Para a RAM, grave um perfil com "uso real" no nome.
+- **Paginação**: páginas lidas do disco por segundo em cada sessão; o laudo avisa quando as quedas coincidem com paginação.
+- **Aviso de linha de base vencida** quando CS2, driver, Windows ou BIOS mudam depois da medição.
+- **Overlays e aceleração** (Otimização): desliga a aceleração de hardware do Discord (com restauração) e mostra onde desligar os overlays de Discord, Steam e NVIDIA.
+  Xbox Game Bar entrou nos ajustes do Windows.
+
 **Sessões › Benchmark CS2**
 - **Perfil de teste** (ex.: "linha de base", "fps_max 240"): cada captura é gravada com o nome do perfil e nunca é apagada pela limpeza de espaço.
 - **CAPTURA CS2**: fica armada e começa quando o CS2 está em primeiro plano. Termina no tempo escolhido ou quando o mapa de benchmark imprime

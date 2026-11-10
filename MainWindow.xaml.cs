@@ -513,6 +513,7 @@ public partial class MainWindow : Window
             OptTweaks.ItemsSource = _tweaks;
         }
         RefreshShaderInfo();
+        RefreshOverlays();
         RefreshApps();
         UpdateRamStatus();
     }

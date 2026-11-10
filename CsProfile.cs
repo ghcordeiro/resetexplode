@@ -73,6 +73,14 @@ public static class CsProfile
                 (Registry.CurrentUser, @"Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager", "SilentInstalledAppsEnabled", 0),
                 (Registry.CurrentUser, @"Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager", "PreInstalledAppsEnabled", 0),
             }, restart: true),
+        Multi("cs.gamebar", "Xbox Game Bar desligado",
+            "Desliga a Xbox Game Bar (Win+G) e o painel de inicialização dela.",
+            "Um overlay a menos por cima do jogo. A gravação em segundo plano já é desligada no ajuste Game DVR.",
+            new (RegistryKey, string, string, int)[]
+            {
+                (Registry.CurrentUser, @"Software\Microsoft\GameBar", "UseNexusForGameBarEnabled", 0),
+                (Registry.CurrentUser, @"Software\Microsoft\GameBar", "ShowStartupPanel", 0),
+            }, restart: false),
         Multi("cs.visual", "Efeitos visuais do Windows desligados (transparência e animações da barra)",
             "Tira a transparência e as animações da barra de tarefas.",
             "Pequeno alívio para a GPU e o compositor do Windows, que também desenha por cima do jogo em janela.",

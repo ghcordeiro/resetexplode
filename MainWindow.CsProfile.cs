@@ -50,4 +50,30 @@ public partial class MainWindow
             missing.Add("Razer Synapse");
         if (missing.Count > 0) OptResult.Text += $" Não estão abertos: {string.Join(", ", missing)}.";
     }
+
+    // ---- overlays e aceleração ----
+
+    private void RefreshOverlays()
+    {
+        try { OverlayList.ItemsSource = OverlayCheck.Items(); }
+        catch (Exception ex) { OverlayStatus.Text = "Falhou: " + ex.Message; ErrorReporter.Log("overlays", ex); }
+    }
+
+    private void BtnOverlayCheck_Click(object sender, RoutedEventArgs e) { OverlayStatus.Text = ""; RefreshOverlays(); }
+
+    private void OverlayFix_Click(object sender, RoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.Tag is not string id) return;
+        try { OverlayCheck.Fix(id); OverlayStatus.Text = "Feito. Abra o programa de novo e meça."; }
+        catch (Exception ex) { OverlayStatus.Text = ex.Message; }
+        RefreshOverlays();
+    }
+
+    private void OverlayRestore_Click(object sender, RoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.Tag is not string id) return;
+        try { OverlayCheck.Restore(id); OverlayStatus.Text = "Restaurado."; }
+        catch (Exception ex) { OverlayStatus.Text = ex.Message; }
+        RefreshOverlays();
+    }
 }
