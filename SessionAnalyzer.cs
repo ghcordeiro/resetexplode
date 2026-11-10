@@ -302,6 +302,16 @@ public static class SessionAnalyzer
         Row(lines, "CPU máx. (°C)", D(a, "cpu_temp_max_c"), D(b, "cpu_temp_max_c"), false, "0");
         Row(lines, "GPU máx. (°C)", D(a, "gpu_temp_max_c"), D(b, "gpu_temp_max_c"), false, "0");
 
+        var changes = ConfigChanges(before, after);
+        lines.Add(changes.Count > 0 ? "O que mudou no PC: " + string.Join("; ", changes) + "." : "Nenhuma mudança de configuração detectada entre as duas sessões.");
+        if (durA > 0 && durB > 0 && Math.Max(durA, durB) / Math.Min(durA, durB) > 2)
+            lines.Add("As sessões têm durações bem diferentes: compare trechos parecidos do jogo (mesmo mapa/cena) para o resultado valer.");
+        return lines;
+    }
+
+    /// <summary>O que mudou no PC entre duas sessões (ajustes, driver, Hz, RAM...), uma frase por mudança.</summary>
+    public static List<string> ConfigChanges(string before, string after)
+    {
         var ca = SessionContext.Load(before); var cb = SessionContext.Load(after);
         var changes = new List<string>();
         if (ca != null && cb != null)
@@ -316,10 +326,7 @@ public static class SessionAnalyzer
             Diff(changes, "HAGS", ca.Hags?.ToString(), cb.Hags?.ToString());
             Diff(changes, "Resizable BAR", ca.ResizableBar?.ToString(), cb.ResizableBar?.ToString());
         }
-        lines.Add(changes.Count > 0 ? "O que mudou no PC: " + string.Join("; ", changes) + "." : "Nenhuma mudança de configuração detectada entre as duas sessões.");
-        if (durA > 0 && durB > 0 && Math.Max(durA, durB) / Math.Min(durA, durB) > 2)
-            lines.Add("As sessões têm durações bem diferentes: compare trechos parecidos do jogo (mesmo mapa/cena) para o resultado valer.");
-        return lines;
+        return changes;
     }
 
     private static string? Hz(SessionContext c) => c.Monitor is { } m ? $"{m.Largura}×{m.Altura} a {m.HzAtual} Hz" : null;

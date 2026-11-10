@@ -19,6 +19,7 @@ public partial class MainWindow
     {
         ("Pular intro (-novid)", "-novid", null), ("Prioridade alta (-high)", "-high", null), ("Sem limite de FPS (+fps_max 0)", "+fps_max 0", null),
         ("Sem joystick (-nojoy)", "-nojoy", null), ("Abrir console (-console)", "-console", null),
+        ("Gravar console.log (-condebug)", "-condebug", "CS2: grava o console em game\\csgo\\console.log. O benchmark lê dali o resumo do mapa (linha [VProf] FPS) e termina a captura sozinho."),
         ("Programas de terceiros (-allow_third_party_software)", "-allow_third_party_software",
          "CS2: libera programas que o modo confiável bloqueia, como a captura de jogo do OBS, ReShade e alguns overlays.\n" +
          "Atenção: a Valve diz que usar esta opção pode reduzir o seu Fator de Confiança (Trust Factor) no matchmaking."),

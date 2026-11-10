@@ -131,11 +131,15 @@ public sealed class GameSession : IDisposable
         if (_seconds % 10 == 0) { _frames.Flush(); _sensors.Flush(); _events.Flush(); }
     }
 
+    /// <summary>Resumo dos frames até agora (sem fechar a sessão).</summary>
+    public FrameSummary Preview() => Summarize(_frameTimes);
+
     /// <summary>Fecha os arquivos e grava o resumo.json. <paramref name="extra"/> entra no resumo (hardware, erros de hardware...).</summary>
     public FrameSummary Finish(string reason, IReadOnlyDictionary<string, object?> extra)
     {
         Event("fim", reason);
         var sum = Summarize(_frameTimes);
+        var drops = FrameMetrics.Drops(_frameTimes);
         var resumo = new Dictionary<string, object?>
         {
             ["jogo"] = Game,
@@ -149,6 +153,9 @@ public sealed class GameSession : IDisposable
             ["low_01pct_fps"] = Math.Round(sum.Low01Fps, 1),
             ["frametime_ms"] = new { p50 = R(sum.P50Ms), p95 = R(sum.P95Ms), p99 = R(sum.P99Ms), p999 = R(sum.P999Ms), max = R(sum.MaxMs) },
             ["engasgos"] = Stutters,
+            ["desvio_padrao_ms"] = R(FrameMetrics.StdDev(_frameTimes)),
+            ["quedas"] = drops.Count,
+            ["quedas_regularidade"] = FrameMetrics.RegularityScore(drops) is double reg ? R(reg) : null,
             ["tempo_em_primeiro_plano_pct"] = _seconds > 0 ? Math.Round(100.0 * _fgSeconds / _seconds) : null,
             ["limitador_pct_do_tempo"] = _limiters.OrderByDescending(kv => kv.Value)
                 .ToDictionary(kv => kv.Key, kv => Math.Round(100.0 * kv.Value / Math.Max(1, _limiters.Values.Sum()))),
@@ -264,6 +271,7 @@ public static class SessionStore
         {
             if (total <= MaxTotalBytes) break;
             if (string.Equals(old.Folder, keep, StringComparison.OrdinalIgnoreCase)) continue;
+            if (SessionProfile.IsPinned(old.Folder)) continue; // sessão de um perfil de teste: a linha de base não pode sumir
             try { Directory.Delete(old.Folder, true); total -= old.Bytes; } catch { }
         }
     }

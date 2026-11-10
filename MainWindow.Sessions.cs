@@ -36,6 +36,7 @@ public partial class MainWindow
         ChkSessKeyboard.IsChecked = _settings.SessionKeyboard;
         ShowLastInputTest();
         RefreshSessionList();
+        RefreshBenchProfiles();
         UpdateSessionStatus();
     }
 
@@ -63,6 +64,7 @@ public partial class MainWindow
     private void SessionTick()
     {
         if (_session != null) { RecordSecond(); return; }
+        if (BenchArmedTick()) return;
 
         var fg = _frames.GetForegroundStats();
         if (fg != null && !NotGames.Contains(fg.ProcessName)) _lastFramePid = fg.ProcessId;
@@ -101,6 +103,7 @@ public partial class MainWindow
             _session = session;
             _sessionProc = proc;
             _frames.Present += session.OnPresent;
+            BenchOnSessionStart(session, exe);
 
             // Contexto (RAM, monitor, opções do Windows, disco...) em segundo plano: WMI pode levar 1–2 s e o jogo está rodando.
             IntPtr hwnd = ForegroundPid() == pid ? GetForegroundWindow() : proc.MainWindowHandle;
@@ -126,6 +129,9 @@ public partial class MainWindow
                 try { ctx.Save(folder); } catch { }
                 return ctx;
             });
+            if (_benchActive)
+                _benchRecollect = () => SessionContextCollector.Collect(exe, hwnd, nvml, cpu, gpuName, driver,
+                    WindowsTweaks.All().Where(t => { try { return t.Read() == true; } catch { return false; } }).Select(t => t.Title).ToList());
             AddEvent("", "Gravação de sessão", $"{session.Game} · começou", "ok");
         }
         catch (Exception ex)
@@ -165,6 +171,7 @@ public partial class MainWindow
         s.Tick(new SessionSecond(foreground, limiter.ToString(), pstate, perfCap, thermal,
             _monitor.CpuTemperature, MainGpuTemp(), _monitor.CpuPower, MainGpuPower(),
             metrics, _sessionRows.Select(r => r.RawValue).ToList()));
+        BenchTick(s);
 
         if (PageSessions.IsVisible) UpdateSessionStatus();
     }
@@ -175,6 +182,7 @@ public partial class MainWindow
         var s = _session;
         if (s == null) return;
         _frames.Present -= s.OnPresent;
+        var bench = BenchSnapshotAndReset(reason);
         _session = null;
         _sessionProc?.Dispose();
         _sessionProc = null;
@@ -207,6 +215,7 @@ public partial class MainWindow
                 extra["avisos"] = SessionAdvice.Evaluate(ctx).Select(a => a.ToString()).ToList();
                 try { ctx.Save(s.Folder); } catch { }
             }
+            if (bench != null) BenchApply(bench, s, ctx, extra);
             extra["ram"] = ram;
             var errors = OcCheck.ErrorsSince(s.Start);
             extra["erros_whea"] = errors.Whea;
@@ -222,7 +231,8 @@ public partial class MainWindow
         {
             AddEvent("", "Gravação de sessão", ex == null && sum != null
                 ? $"{s.Game} · {sum.AvgFps:0} FPS, 1% low {sum.Low1Fps:0}" : $"{s.Game} · falha ao salvar: {ex?.Message}", ex == null ? "ok" : "abortado");
-            if (PageSessions.IsVisible) RefreshSessionList();
+            if (PageSessions.IsVisible) { RefreshSessionList(); RefreshBenchProfiles(); }
+            if (bench != null) CsBenchStatus.Text = sum != null ? $"Captura salva: {sum.AvgFps:0} fps, 1% low {sum.Low1Fps:0}." : "Falha ao salvar a captura.";
         }
 
         if (wait)
