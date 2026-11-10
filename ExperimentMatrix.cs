@@ -57,6 +57,11 @@ public sealed class ExperimentMatrix
     {
         var def = Default().Steps;
         bool changed = false;
+        // Texto do passo do G-Sync melhorou (precisa do limite de fps abaixo da taxa do monitor): atualiza matrizes salvas que ainda não o mediram.
+        if (Steps.FirstOrDefault(x => x.Profile == "gsync reflex" && x.Status == "pendente") is { } gs && !gs.Change.Contains("197"))
+        {
+            gs.Change = "G-Sync + V-Sync LIGADO no painel NVIDIA + Reflex Ligado+Boost + Máximo de QPS no jogo 197 (tire +fps_max 0 das opções de inicialização)"; changed = true;
+        }
         // O passo da BIOS foi descartado pelos dados (a BIOS instalada já é recente): matrizes antigas pulam ele sozinhas.
         if (Steps.FirstOrDefault(x => x.Profile == "bios atualizada" && x.Status == "pendente") is { } bios)
         {
@@ -91,7 +96,7 @@ public sealed class ExperimentMatrix
         m.Steps[^1].Status = "pulado";
         m.Steps[^1].Result = "a BIOS 2.O0 (mai/2026) já tem AGESA bem acima do 1.2.0.7 que corrigiu o fTPM";
         S("fps_max 240", "fps_max 240 (opções de inicialização ou autoexec)", "fps sem limite");
-        S("gsync reflex", "G-Sync + V-Sync no driver (Biblioteca › NVIDIA) + Reflex no jogo, sem fps_max", "fps sem limite");
+        S("gsync reflex", "G-Sync + V-Sync LIGADO no painel NVIDIA + Reflex Ligado+Boost + Máximo de QPS no jogo 197 (tire +fps_max 0 das opções de inicialização)", "fps sem limite");
         S("opcoes minimas", "opções de inicialização do CS2: tire -high, -novid e -nojoy (deixe só -fullscreen e -condebug). A Valve diz que a melhor opção é nenhuma", "opções que atrapalham");
         S("nvidia energia max", "Biblioteca › NVIDIA: marque \"Gerenciamento de energia: preferir desempenho máximo\" e aplique no driver", "clock da GPU na hora do pico");
         S("timer global", "Otimização › ligue \"Experimento: timer global do Windows 11\" e reinicie", "timer do sistema");
