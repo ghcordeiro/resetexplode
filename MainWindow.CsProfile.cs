@@ -129,4 +129,73 @@ public partial class MainWindow
         try { TimerLines.ItemsSource = await Task.Run(SystemTimers.Diagnose); }
         catch (Exception ex) { TimerLines.ItemsSource = new[] { "Falhou: " + ex.Message }; }
     }
+
+    // ---- OneDrive, dispositivos e orientações manuais ----
+
+    private static readonly string[] ManualTips =
+    {
+        "Steam › Configurações › Downloads: desmarque \"Permitir downloads durante o jogo\". Evita disco e rede disputando com o CS2.",
+        "Steam › Configurações › Interface: desmarque \"Ativar a aceleração por GPU nas visualizações web\" (a Steam deixa de usar a placa por baixo do jogo).",
+        "Painel de Controle NVIDIA › Gerenciar configurações 3D › Tamanho do cache de shaders: Ilimitado (ou 10 GB). Evita recompilar shaders e as travadas disso.",
+        "CS2 › Vídeo › NVIDIA Reflex Low Latency: Ligado + Boost. Mantém o clock da GPU alto mesmo com a CPU como limite.",
+        "CS2 › opções de inicialização: deixe só o que o app precisa (-condebug para o benchmark, +fps_max se testar). A Valve diz que a melhor opção é nenhuma; -high e -threads costumam piorar.",
+        "Notificações: ligue o \"Não perturbe\" automático ao jogar e em tela cheia (botão abaixo). Notificação por cima do jogo tira o foco.",
+        "Razer Synapse: se o seu mouse guarda o DPI na memória interna, grave o DPI e feche o Synapse durante o jogo. Meça como passo \"sem synapse\" da matriz.",
+        "Microsoft Edge e Chrome: não deixe abertos durante a partida; o Modo CS automático fecha o que não está na lista permitida.",
+    };
+
+    private void InitManualTips() => ManualList.ItemsSource = ManualTips;
+
+    private void BtnOpenNotifications_Click(object sender, RoutedEventArgs e) => ShellRunner.OpenUrl("ms-settings:notifications");
+    private void BtnOpenCoreIsolation_Click(object sender, RoutedEventArgs e) => ShellRunner.OpenUrl("windowsdefender://coreisolation");
+
+    private void BtnOneDrive_Click(object sender, RoutedEventArgs e)
+    {
+        string win = Environment.GetFolderPath(Environment.SpecialFolder.Windows);
+        string? setup = new[] { System.IO.Path.Combine(win, "SysWOW64", "OneDriveSetup.exe"), System.IO.Path.Combine(win, "System32", "OneDriveSetup.exe") }.FirstOrDefault(System.IO.File.Exists);
+        if (setup == null) { DevStatus.Text = "OneDrive não encontrado (já desinstalado?)."; return; }
+        if (MessageBox.Show(this, "Desinstalar o OneDrive? Arquivos que só estão na nuvem continuam no site. Para voltar: winget install Microsoft.OneDrive.",
+                            "OneDrive", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
+        try
+        {
+            foreach (var p in Process.GetProcessesByName("OneDrive")) { try { p.Kill(); } catch { } p.Dispose(); }
+            Process.Start(new ProcessStartInfo(setup, "/uninstall") { UseShellExecute = false, CreateNoWindow = true })?.Dispose();
+            DevStatus.Text = "OneDrive sendo desinstalado.";
+        }
+        catch (Exception ex) { DevStatus.Text = "Falhou: " + ex.Message; ErrorReporter.Log("onedrive", ex); }
+    }
+
+    private List<UnusedDevice> _devices = new();
+
+    private async void BtnDevScan_Click(object sender, RoutedEventArgs e)
+    {
+        DevStatus.Text = "Listando…";
+        try
+        {
+            _devices = await Task.Run(DeviceCleanup.Scan);
+            DevList.ItemsSource = _devices;
+            DevStatus.Text = (_devices.Count == 0 ? "Nenhum candidato." : $"{_devices.Count} candidato(s); marque só o que você realmente não usa.") + (DeviceCleanup.DisabledCount > 0 ? $" {DeviceCleanup.DisabledCount} já desabilitado(s) pelo app." : "");
+        }
+        catch (Exception ex) { DevStatus.Text = "Falhou: " + ex.Message; ErrorReporter.Log("dispositivos (listar)", ex); }
+    }
+
+    private async void BtnDevDisable_Click(object sender, RoutedEventArgs e)
+    {
+        if (!RequireAdmin()) return;
+        var sel = _devices.Where(d => d.Selected).ToList();
+        if (sel.Count == 0) { DevStatus.Text = "Marque algum dispositivo."; return; }
+        if (MessageBox.Show(this, "Desabilitar:\n\n" + string.Join("\n", sel.Select(d => "  • " + d.Title)) + "\n\nREABILITAR TODOS desfaz. Continuar?",
+                            "Dispositivos", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
+        var (done, failed) = await Task.Run(() => DeviceCleanup.Disable(sel));
+        DevStatus.Text = $"{done.Count} desabilitado(s)." + (failed.Count > 0 ? " Falharam: " + string.Join("; ", failed) : "");
+        _devices = await Task.Run(DeviceCleanup.Scan);
+        DevList.ItemsSource = _devices;
+    }
+
+    private async void BtnDevEnable_Click(object sender, RoutedEventArgs e)
+    {
+        if (!RequireAdmin()) return;
+        var (ok, failed) = await Task.Run(DeviceCleanup.EnableAll);
+        DevStatus.Text = $"{ok} reabilitado(s)." + (failed.Count > 0 ? " Falharam: " + string.Join("; ", failed) : "");
+    }
 }

@@ -36,6 +36,14 @@ Versão pessoal do RESET EXPLODE, só para CS2 neste PC. Mede a estabilidade do 
   Se a FACEIT abrir com a Integridade desligada, o app avisa para ligar e reiniciar.
 - **Drivers**: avisa quando a BIOS tem mais de um ano.
 - **Comparar**: separa as execuções por versão do driver da GPU quando há mais de uma; **EXPORTAR CSV** com todas as execuções dos dois perfis.
+- **Catálogo de otimização** (`docs/catalogo-otimizacao.md`: ~80 itens avaliados com fontes). Novos ajustes no APLICAR PC DE CS: Plataforma de Máquina Virtual/Sandbox/WSL
+  desligados (o Hyper-V completo e o VBS ficam), Defender com verificação a 25% de CPU às 4h, Inicialização rápida desligada, atualizações só da rede local,
+  Edge sem segundo plano, Iniciar sem busca na web, Store sem atualização automática, telemetria no mínimo, manutenção automática às 3h, mais 9 serviços e 6 tarefas.
+- **Experimentos** (fora do APLICAR; passos novos da matriz): timer global do Windows 11, MPO desligado, moderação de interrupções da placa de rede,
+  sem Synapse, um monitor só, Preferred Cores e C-States (BIOS).
+- **OneDrive e dispositivos sem uso** (Otimização): desinstala o OneDrive; lista adaptadores de rede sem conexão, Bluetooth e controladoras de áudio e desabilita os marcados
+  (REABILITAR TODOS desfaz). Cartão "O que fazer à mão" com o que o app não consegue gravar (Steam, cache de shaders da NVIDIA, Reflex, opções de inicialização, Synapse).
+- Matrizes salvas ganham os passos novos sozinhas. A leitura dos ajustes lentos (PowerShell, agendador) roda em segundo plano e não entra no retrato das sessões.
 - **Apps pré-instalados** (Otimização): remove Clipchamp, Notícias, Clima, Xbox, Teams pessoal e afins só para o seu usuário, com reinstalação pela Store.
 
 **Sessões › Benchmark CS2**

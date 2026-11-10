@@ -1888,6 +1888,54 @@
                                 </ItemsControl>
                             </StackPanel>
                         </Border>
+                        <!-- OneDrive e dispositivos -->
+                        <Border Style="{StaticResource CardBorder}" Margin="0,14,0,0">
+                            <StackPanel>
+                                <TextBlock Text="ONEDRIVE E DISPOSITIVOS SEM USO" Style="{StaticResource Label}"/>
+                                <TextBlock Foreground="{DynamicResource Faint}" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,10">
+                                    OneDrive: o desinstalador do próprio OneDrive; arquivos que só estão na nuvem continuam no site. Para voltar: winget install Microsoft.OneDrive.
+                                    Dispositivos: adaptadores de rede sem conexão, Bluetooth e controladoras de áudio. Nada é apagado: DESABILITAR é o mesmo botão do Gerenciador de Dispositivos e
+                                    REABILITAR TODOS desfaz. GPU, disco, USB, teclado e mouse nunca aparecem.
+                                </TextBlock>
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                                    <Button Style="{StaticResource OutlineButton}" Content="DESINSTALAR ONEDRIVE" Padding="14,7" Click="BtnOneDrive_Click"/>
+                                </StackPanel>
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                                    <Button Style="{StaticResource OutlineButton}" Content="LISTAR DISPOSITIVOS" Padding="14,7" Margin="0,0,8,0" Click="BtnDevScan_Click"/>
+                                    <Button Style="{StaticResource PrimaryButton}" Content="DESABILITAR MARCADOS" Padding="14,7" Margin="0,0,8,0" Click="BtnDevDisable_Click"/>
+                                    <Button Style="{StaticResource OutlineButton}" Content="REABILITAR TODOS" Padding="14,7" Click="BtnDevEnable_Click"/>
+                                </StackPanel>
+                                <ItemsControl x:Name="DevList">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <StackPanel Margin="0,4,0,0">
+                                                <CheckBox IsChecked="{Binding Selected}" Content="{Binding Title}"/>
+                                                <TextBlock Text="{Binding Why}" Foreground="{DynamicResource Muted}" FontSize="11" TextWrapping="Wrap" Margin="24,0,0,0"/>
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <TextBlock x:Name="DevStatus" TextWrapping="Wrap" FontWeight="SemiBold" Margin="0,8,0,0"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- O que fazer à mão -->
+                        <Border Style="{StaticResource CardBorder}" Margin="0,14,0,0">
+                            <StackPanel>
+                                <TextBlock Text="O QUE FAZER À MÃO (O APP NÃO CONSEGUE GRAVAR)" Style="{StaticResource Label}"/>
+                                <ItemsControl x:Name="ManualList">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding}" TextWrapping="Wrap" FontSize="12" Margin="0,0,0,6"/>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                                    <Button Style="{StaticResource OutlineButton}" Content="ABRIR NOTIFICAÇÕES" Padding="12,6" FontSize="11" Margin="0,0,8,0" Click="BtnOpenNotifications_Click"/>
+                                    <Button Style="{StaticResource OutlineButton}" Content="ABRIR SEGURANÇA DO WINDOWS" Padding="12,6" FontSize="11" Click="BtnOpenCoreIsolation_Click"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
                         <!-- OPT-END -->
                     </StackPanel>
                 </ScrollViewer>

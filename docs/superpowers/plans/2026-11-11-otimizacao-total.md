@@ -65,3 +65,13 @@ Process Lasso, desligar Defender/Store/Windows Update/SVM, mitigações de CPU, 
   o estado do VBS (`Win32_DeviceGuard`) depois de reiniciar; o app avisa se o VBS caiu.
 - **Desabilitar dispositivos:** um item errado tira som ou rede; por isso lista fechada de classes, confirmação e restauração.
 - **Políticas de grupo no Windows Home:** algumas chaves de política são ignoradas; o app lê de volta e diz "sem efeito nesta edição".
+
+## Notas de implementação (11/11/2026)
+
+Fases 1 a 3 implementadas e compiladas; nada executado no Windows. Diferenças:
+- **cs.vmp:** não desliga `Microsoft-Hyper-V-All` (risco de derrubar o VBS); só VirtualMachinePlatform, HypervisorPlatform, Sandbox e WSL. Lê/liga/desliga por PowerShell (`Get-WindowsOptionalFeature`).
+- **cs.dnd:** virou orientação (botão que abre as Notificações); as chaves do "Não perturbe" automático não foram confirmadas.
+- **cs.defender:** `Set-MpPreference` por PowerShell com backup de fator/idle/horário. Tamper Protection pode bloquear em alguns PCs; o erro aparece na lista de falhas.
+- **Moderação da rede:** só o desligado (`*InterruptModeration = 0`); o nível "Médio" depende do driver e fica como roteiro.
+- **MPO e timer global:** chaves do catálogo; o Windows novo pode ignorar o MPO. **Dispositivos:** lista fechada (rede sem conexão, Bluetooth, controladoras HDAUDIO); desabilita com `pnputil`.
+- **Slow:** ajustes que consultam PowerShell/agendador não entram no retrato das sessões (evita pico de CPU no começo da gravação).

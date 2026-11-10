@@ -39,6 +39,26 @@ public static class SystemTimers
         catch { return null; }
     }
 
+    /// <summary>Versão do AMD Chipset Software (traz o driver de energia e os planos do Ryzen). Procura nos programas instalados.</summary>
+    public static string AmdChipset()
+    {
+        foreach (var hive in new[] { RegistryView.Registry64, RegistryView.Registry32 })
+        {
+            using var root = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, hive).OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall");
+            if (root == null) continue;
+            foreach (var name in root.GetSubKeyNames())
+            {
+                using var k = root.OpenSubKey(name);
+                if (k?.GetValue("DisplayName") is not string dn || !dn.Contains("AMD Chipset", StringComparison.OrdinalIgnoreCase)) continue;
+                string ver = k.GetValue("DisplayVersion")?.ToString() ?? "?", date = k.GetValue("InstallDate")?.ToString() ?? "";
+                string age = date.Length == 8 && DateTime.TryParseExact(date, "yyyyMMdd", null, System.Globalization.DateTimeStyles.None, out var d) && (DateTime.Now - d).TotalDays > 365
+                    ? " (instalado há mais de um ano: veja a versão nova em amd.com/support)" : "";
+                return $"AMD Chipset Software {ver}{age}.";
+            }
+        }
+        return "AMD Chipset Software não encontrado: sem os planos de energia do Ryzen. Instale em amd.com/support (Chipsets › AMD B550).";
+    }
+
     public static string Bcd() => Run("bcdedit.exe", "/enum {current}");
 
     /// <summary>Opção booleana do bcdedit ligada. O nome da opção não é traduzido; o valor pode vir como Yes/Sim/On.</summary>
@@ -63,6 +83,7 @@ public static class SystemTimers
             false => "BitLocker desligado.",
             _ => "BitLocker: não deu para ler.",
         });
+        lines.Add(AmdChipset());
         lines.Add(ReadDword(PrioPath, "Win32PrioritySeparation") is int ps ? $"Win32PrioritySeparation = 0x{ps:X} (padrão do Windows: 0x2)." : "Win32PrioritySeparation: padrão.");
         try
         {

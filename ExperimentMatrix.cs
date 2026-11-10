@@ -40,9 +40,34 @@ public sealed class ExperimentMatrix
 
     public static ExperimentMatrix Load()
     {
-        try { if (File.Exists(FilePath)) return JsonSerializer.Deserialize<ExperimentMatrix>(File.ReadAllText(FilePath), Json) ?? Default(); }
+        try
+        {
+            if (File.Exists(FilePath) && JsonSerializer.Deserialize<ExperimentMatrix>(File.ReadAllText(FilePath), Json) is { } m)
+            {
+                m.CompleteWithDefaults();
+                return m;
+            }
+        }
         catch { }
         return Default();
+    }
+
+    /// <summary>Matrizes salvas por versões antigas ganham os passos novos, no lugar certo (depois do passo que vinha antes na ordem padrão).</summary>
+    public void CompleteWithDefaults()
+    {
+        var def = Default().Steps;
+        bool changed = false;
+        for (int i = 1; i < def.Count; i++)
+        {
+            if (Steps.Any(x => x.Profile.Equals(def[i].Profile, StringComparison.OrdinalIgnoreCase))) continue;
+            int prev = Steps.FindIndex(x => x.Profile.Equals(def[i - 1].Profile, StringComparison.OrdinalIgnoreCase));
+            int at = prev >= 0 ? prev + 1 : Steps.FindIndex(x => x.Kind == "compra");
+            Steps.Insert(at < 0 ? Steps.Count : at, def[i]);
+            changed = true;
+        }
+        if (!changed) return;
+        for (int k = 0; k < Steps.Count; k++) Steps[k].Order = k;
+        Save();
     }
 
     public void Save()
@@ -60,6 +85,13 @@ public sealed class ExperimentMatrix
         S("bios atualizada", "BIOS/AGESA mais recente, mesmas configurações (salve um OC Profile antes)", "stutter do fTPM");
         S("fps_max 240", "fps_max 240 (opções de inicialização ou autoexec)", "fps sem limite");
         S("gsync reflex", "G-Sync + V-Sync no driver (Biblioteca › NVIDIA) + Reflex no jogo, sem fps_max", "fps sem limite");
+        S("timer global", "Otimização › ligue \"Experimento: timer global do Windows 11\" e reinicie", "timer do sistema");
+        S("mpo off", "Otimização › ligue \"Experimento: Multiplane Overlay (MPO) desligado\" e reinicie", "dois monitores e overlay");
+        S("rede moderacao", "Otimização › ligue \"Experimento: moderação de interrupções da placa de rede\" e reinicie (ou desative e ative o adaptador)", "latência da rede");
+        S("sem synapse", "grave o DPI na memória do mouse e feche o Razer Synapse durante o jogo", "processos da Razer");
+        S("um monitor", "desligue o segundo monitor (144 Hz) durante o jogo", "compositor com dois monitores");
+        S("preferred cores off", "BIOS: Preferred Cores desligado (CPPC continua ligado). Salve um OC Profile antes", "agendamento de núcleos");
+        S("c-states", "BIOS: Global C-State Control desligado e Power Supply Idle Control em Typical Current Idle. Esquenta mais em repouso", "latência de acordar núcleos");
         S("co -15", "Curve Optimizer -15 e boost +100 MHz", "clock stretching com -20");
         S("rebar", "Above 4G Decoding e Re-Size BAR ligados na BIOS", "ganho de GPU");
         S("dynamic tick", "Otimização › ligue \"Experimento: desligar o dynamic tick\" e reinicie", "timer do sistema");

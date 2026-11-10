@@ -519,6 +519,7 @@ public partial class MainWindow : Window
         }
         RefreshShaderInfo();
         RefreshOverlays();
+        InitManualTips();
         LoadGameModeOptions();
         RefreshApps();
         UpdateRamStatus();
