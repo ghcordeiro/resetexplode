@@ -671,6 +671,21 @@ public partial class MainWindow
             ? $"\nVariação do 1% low entre execuções: {nz.RangePct.ToString("0.#", inv)}% ({(nz.Reliable ? "confiável" : "alta")}).\n"
             : "\nMenos de 3 execuções válidas: ruído não medido.\n");
 
+        // Sensores de cada execução válida (média; máximo entre parênteses): temperatura, watts, tensão, clock e carga
+        try
+        {
+            var valid = runs.Where(r => r.Valid && !r.WarmUp).TakeLast(5).ToList();
+            var stats = valid.Select(r => SensorSummary.Compute(r.Folder)).ToList();
+            var labels = stats.SelectMany(x => x.Select(y => y.Label)).Distinct().ToList();
+            if (labels.Count > 0)
+            {
+                sb.Append("\n### Sensores durante a captura (média, máx entre parênteses)\n\n| métrica |" + string.Join("|", valid.Select((_, i) => $" #{i + 1} ")) + "|\n|---|" + string.Join("|", valid.Select(_ => "---")) + "|\n");
+                foreach (var l in labels)
+                    sb.Append($"| {l} |" + string.Join("|", stats.Select(x => x.FirstOrDefault(y => y.Label == l) is { } y ? $" {y.Avg.ToString("0.#", inv)} ({y.Max.ToString("0.#", inv)}) " : " — ")) + "|\n");
+            }
+        }
+        catch (Exception ex) { ErrorReporter.Log("sensores no resumo", ex); }
+
         var m = ExperimentMatrix.Load();
         if (m.BaselineProfile != null && !m.BaselineProfile.Equals(profile, StringComparison.OrdinalIgnoreCase))
         {

@@ -219,6 +219,14 @@ public static class SessionAnalyzer
         if ((D(r, "resets_driver_video") ?? 0) > 0)
             lines.Add(new(AvisoNivel.Problema, $"O driver de vídeo reiniciou {D(r, "resets_driver_video"):0} vez(es): overclock da GPU instável, driver corrompido ou fonte no limite."));
 
+        // 6b) Sensores durante o jogo (CPU/GPU: temperatura, watts, tensão, clock)
+        try
+        {
+            var sens = SensorSummary.Compute(folder);
+            if (sens.Count > 0 && SensorSummary.OneLine(sens) is { Length: > 0 } sl) lines.Add(new(null, "Sensores durante o jogo: " + sl + ". O sensores.csv tem tudo, segundo a segundo."));
+        }
+        catch { }
+
         // 7) Programas em segundo plano, mouse e custo da gravação
         if (D(r, "outros_gpu_medio_pct") is double og && og >= 10)
             lines.Add(new(AvisoNivel.Atencao, $"Outros programas usaram {og:0}% da GPU em média durante o jogo (navegador com vídeo, gravação, overlay): feche-os para ganhar FPS."));
