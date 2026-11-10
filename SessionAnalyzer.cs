@@ -161,6 +161,11 @@ public static class SessionAnalyzer
             else lines.Add(new(null, "Diagnóstico profundo: nenhum DPC/ISR passou de 0,5 ms."));
         }
 
+        if (r["thread_principal"] is JsonObject tp)
+            lines.Add(new(D(tp, "segundos_acima_90_pct") >= 20 ? AvisoNivel.Atencao : null,
+                $"Thread principal do CS2: {D(tp, "media_pct"):0}% de um núcleo em média, acima de 90% em {D(tp, "segundos_acima_90_pct"):0}% dos segundos" +
+                (D(tp, "segundos_acima_90_pct") >= 20 ? ": a CPU é o limite (um núcleo mais rápido ou com mais cache ajudaria)." : ".")));
+
         // 5) Rede
         if (r["rede"] is JsonObject net)
         {

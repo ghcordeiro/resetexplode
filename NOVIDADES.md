@@ -23,6 +23,11 @@ Versão pessoal do RESET EXPLODE, só para CS2 neste PC. Mede a estabilidade do 
   Xbox Game Bar entrou nos ajustes do Windows.
 - **Modo CS automático** (Otimização): quando o CS2 abre, de qualquer jeito, troca a área de trabalho para 1280x960, fecha o que não está na lista,
   limpa a RAM, para SysMain/Windows Search/Spooler/Windows Update, sobe a prioridade e liga o Alto desempenho; desfaz tudo quando o jogo fecha.
+- **Causa de cada queda**: frame a frame pelo PresentMon, cada queda vira CPU, GPU ou "espera do sistema" (driver, interrupção, paginação);
+  o laudo mostra a divisão e sugere o diagnóstico profundo quando o sistema é o culpado.
+- **Thread principal do CS2** (diagnóstico profundo): quanto de um núcleo a thread mais ocupada do jogo usou em cada segundo (`threads.csv`).
+  É a prova direta do limite de CPU que o uso por núcleo esconde.
+- A regra do Curve Optimizer passou a usar o clock efetivo de cada núcleo.
 - **Apps pré-instalados** (Otimização): remove Clipchamp, Notícias, Clima, Xbox, Teams pessoal e afins só para o seu usuário, com reinstalação pela Store.
 
 **Sessões › Benchmark CS2**

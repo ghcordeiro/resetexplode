@@ -131,6 +131,14 @@ public static class DiagnosisRules
                 if (gpuCol != null) gpuLow = lowRows.Average(row => sens.Num(row, gpuCol) ?? 0);
                 if (threadCols.Count > 0) threadLow = lowRows.Average(row => threadCols.Max(c => sens.Num(row, c) ?? 0));
             }
+            // Diagnóstico profundo: a thread principal do jogo medida de verdade vale mais que o núcleo mais ocupado.
+            var thr = CsvTable.Read(Path.Combine(folder, "threads.csv"));
+            if (thr != null && lowRows.Count >= 3)
+            {
+                var lowSecs = lowRows.Select(row => Math.Round(sens.Num(row, "t_s") ?? -1)).ToHashSet();
+                var vals = thr.Rows.Where(row => lowSecs.Contains(Math.Round(thr.Num(row, "t_s") ?? -99))).Select(row => thr.Num(row, "thread_principal_pct") ?? 0).ToList();
+                if (vals.Count >= 3) threadLow = vals.Average();
+            }
             if (ramCol != null) ramMax = sens.Rows.Max(row => sens.Num(row, ramCol) ?? 0);
             if (clockCols.Count > 0 && threadCols.Count > 0)
             {
