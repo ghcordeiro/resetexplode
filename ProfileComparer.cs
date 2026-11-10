@@ -56,6 +56,18 @@ public static class ProfileComparer
         return new Comparison(b, c, pct, verdict, higherIsBetter);
     }
 
+    /// <summary>Ruído do 1% low entre execuções do mesmo perfil: faixa e desvio em % da mediana. Confiável = faixa até 5%.</summary>
+    public static (int Runs, double RangePct, double CvPct, bool Reliable) Noise(IEnumerable<RunRecord> runs)
+    {
+        var v = runs.Where(r => r.Valid && !r.WarmUp && r.Low1Fps > 0).Select(r => r.Low1Fps).ToList();
+        if (v.Count < 2) return (v.Count, 0, 0, false);
+        var m = Summarize("1% low", v);
+        double mean = v.Average();
+        double sd = Math.Sqrt(v.Sum(x => (x - mean) * (x - mean)) / (v.Count - 1));
+        double rangePct = m.Median > 0 ? 100 * m.Range / m.Median : 0;
+        return (v.Count, rangePct, mean > 0 ? 100 * sd / mean : 0, v.Count >= MinRuns && rangePct <= 5);
+    }
+
     /// <summary>As métricas principais de dois perfis, só com execuções válidas e fora do aquecimento.</summary>
     public static List<Comparison> CompareRuns(IEnumerable<RunRecord> baseline, IEnumerable<RunRecord> candidate)
     {

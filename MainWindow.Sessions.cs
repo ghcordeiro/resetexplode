@@ -90,7 +90,7 @@ public partial class MainWindow
             IntPtr nvml = gpu?.NvmlHandle ?? IntPtr.Zero;
             _pcieProbe = new PcieProbe(nvml);
             var gpuProbe = new GpuProcessProbe();
-            _probes = new List<SessionProbe> { new GameProcessProbe(), _pcieProbe, gpuProbe, new BackgroundProcessesProbe(gpuProbe), new NetworkProbe(), new PresentMonProbe(),
+            _probes = new List<SessionProbe> { new GameProcessProbe(), _pcieProbe, gpuProbe, new BackgroundProcessesProbe(gpuProbe), new NetworkProbe(), new PresentMonProbe(), new PagingProbe(),
                                              new InputProbe(_settings.SessionKeyboard) };
             if (ChkBenchDeep.IsChecked == true) _probes.Add(new DpcProbe());
 
@@ -233,6 +233,7 @@ public partial class MainWindow
                 ? $"{s.Game} · {sum.AvgFps:0} FPS, 1% low {sum.Low1Fps:0}" : $"{s.Game} · falha ao salvar: {ex?.Message}", ex == null ? "ok" : "abortado");
             if (PageSessions.IsVisible) { RefreshSessionList(); RefreshBenchProfiles(); }
             if (bench != null) CsBenchStatus.Text = sum != null ? $"Captura salva: {sum.AvgFps:0} fps, 1% low {sum.Low1Fps:0}." : "Falha ao salvar a captura.";
+            if (bench != null) BenchAfterSave(bench.Profile);
         }
 
         if (wait)

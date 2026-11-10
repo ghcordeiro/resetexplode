@@ -27,17 +27,51 @@ public partial class MainWindow
 
     // ------------------------------------------------------------------ captura
 
+    // Captura em série: depois de cada captura salva, rearma sozinho até juntar N execuções válidas do mesmo perfil.
+    private string? _seriesProfile;
+    private int _seriesTarget, _seriesStartValid, _seriesAttempts;
+    private bool _seriesIsNoise;
+
     private void BtnCapture_Click(object sender, RoutedEventArgs e)
     {
-        if (_session != null && _benchActive) { StopSession("parado pelo usuário"); return; }
-        if (_captureArmed) { DisarmCapture("Captura cancelada."); return; }
-        if (_session != null) { CsBenchStatus.Text = "Já há uma gravação em curso. Pare-a antes de iniciar a captura."; return; }
-
+        if (_session != null && _benchActive) { _seriesProfile = null; StopSession("parado pelo usuário"); return; }
+        if (_captureArmed) { _seriesProfile = null; DisarmCapture("Captura cancelada."); return; }
         string? profile = SessionProfile.Normalize(SessProfile.Text);
         if (profile == null) { CsBenchStatus.Text = "Dê um nome ao perfil de teste (ex.: linha de base)."; return; }
-        if (AntiCheatGuard.IsRunning()) { CsBenchStatus.Text = "FACEIT Anti-Cheat em execução. Feche o cliente da FACEIT: o benchmark só roda offline."; return; }
+        int repeat = int.TryParse(TxtBenchRepeat.Text.Trim(), out int r) ? Math.Clamp(r, 1, 20) : 1;
+        StartSeries(profile, repeat, noise: false);
+    }
+
+    /// <summary>TESTE DE RUÍDO: 5 capturas da mesma configuração, num perfil próprio, para saber se o benchmark é confiável.</summary>
+    private void BtnNoiseTest_Click(object sender, RoutedEventArgs e)
+    {
+        if (_session != null || _captureArmed) { CsBenchStatus.Text = "Termine a captura em curso antes."; return; }
+        string profile = $"ruido-{DateTime.Now:yyyyMMdd-HHmm}";
+        SessProfile.Text = profile;
+        ChkBenchWarmup.IsChecked = false;
+        StartSeries(profile, 5, noise: true);
+    }
+
+    private void StartSeries(string profile, int target, bool noise)
+    {
+        _seriesProfile = target > 1 ? profile : null;
+        _seriesTarget = target;
+        _seriesIsNoise = noise;
+        _seriesAttempts = 0;
+        _seriesStartValid = SessionProfile.Runs(profile).Count(x => x.Valid && !x.WarmUp);
+        string? err = ArmCapture();
+        if (err != null) { _seriesProfile = null; CsBenchStatus.Text = err; }
+        else if (target > 1) CsBenchStatus.Text += $" Série: {target} capturas válidas; depois de cada uma, rode o mapa de novo.";
+    }
+
+    /// <summary>Arma a captura com o perfil da caixa. Devolve o motivo se não deu para armar.</summary>
+    private string? ArmCapture()
+    {
+        if (_session != null) return "Já há uma gravação em curso. Pare-a antes de iniciar a captura.";
+        if (SessionProfile.Normalize(SessProfile.Text) == null) return "Dê um nome ao perfil de teste (ex.: linha de base).";
+        if (AntiCheatGuard.IsRunning()) return "FACEIT Anti-Cheat em execução. Feche o cliente da FACEIT: o benchmark só roda offline.";
         var cs2 = Process.GetProcessesByName("cs2").FirstOrDefault();
-        if (cs2 == null) { CsBenchStatus.Text = "Abra o CS2 e carregue o mapa de benchmark."; return; }
+        if (cs2 == null) return "Abra o CS2 e carregue o mapa de benchmark.";
 
         string exe = "";
         try { exe = cs2.MainModule?.FileName ?? ""; } catch { }
@@ -47,6 +81,35 @@ public partial class MainWindow
         _captureArmed = true;
         BtnCapture.Content = "CANCELAR CAPTURA";
         CsBenchStatus.Text = "Captura armada. Volte ao CS2: ela começa quando o jogo estiver em primeiro plano.";
+        return null;
+    }
+
+    /// <summary>Chamado quando uma captura do benchmark terminou de salvar (thread da tela): continua a série, se houver.</summary>
+    private void BenchAfterSave(string profile)
+    {
+        try
+        {
+            if (ExperimentMatrix.Load().Evaluate(profile) is string m) { CsBenchStatus.Text += " " + m; RefreshMatrix(); UpdateBaselineWarning(); }
+        }
+        catch (Exception ex) { ErrorReporter.Log("matriz", ex); }
+        if (_seriesProfile == null || !string.Equals(_seriesProfile, profile, StringComparison.OrdinalIgnoreCase)) return;
+        var runs = SessionProfile.Runs(profile);
+        int done = runs.Count(x => x.Valid && !x.WarmUp) - _seriesStartValid;
+        _seriesAttempts++;
+        if (done >= _seriesTarget || _seriesAttempts >= _seriesTarget + 3)
+        {
+            var noise = ProfileComparer.Noise(runs);
+            string verdict = noise.Runs < ProfileComparer.MinRuns ? "poucas execuções válidas para medir o ruído"
+                : $"variação do 1% low de {noise.RangePct:0.#}% (desvio {noise.CvPct:0.#}%): " +
+                  (noise.Reliable ? "o benchmark é confiável para comparar." : "acima de 5%: aumente a duração, reinicie o PC antes e mantenha as condições iguais.");
+            CsBenchStatus.Text = $"Série \"{profile}\" terminou: {done} de {_seriesTarget} válidas. " + verdict;
+            _seriesProfile = null;
+            if (_seriesIsNoise) ErrorReporter.Log($"teste de ruído: {verdict}");
+            return;
+        }
+        string? err = ArmCapture();
+        CsBenchStatus.Text = err ?? $"Série \"{profile}\": {done} de {_seriesTarget} válidas. Rode o mapa de novo (a captura já está armada).";
+        if (err != null) _seriesProfile = null;
     }
 
     private void DisarmCapture(string message)
@@ -201,6 +264,8 @@ public partial class MainWindow
         CmbProfB.ItemsSource = names;
         CmbProfA.SelectedItem = a != null && names.Contains(a) ? a : names.Count > 1 ? names[^1] : null;
         CmbProfB.SelectedItem = b != null && names.Contains(b) ? b : names.Count > 0 ? names[0] : null;
+        UpdateBaselineWarning();
+        RefreshMatrix();
     }
 
     private void BtnCompareProfiles_Click(object sender, RoutedEventArgs e)
@@ -215,7 +280,13 @@ public partial class MainWindow
         string Count(string name, List<RunRecord> r) =>
             $"{name}: {r.Count(x => x.Valid && !x.WarmUp)} execuções válidas, {r.Count(x => !x.Valid)} inválidas, {r.Count(x => x.Valid && x.WarmUp)} de aquecimento";
 
-        var lines = new List<string> { Count(a, ra), Count(b, rb), "" };
+        string NoiseLine(string name, List<RunRecord> r)
+        {
+            var nz = ProfileComparer.Noise(r);
+            return nz.Runs < ProfileComparer.MinRuns ? $"{name}: ruído ainda não medido (menos de 3 válidas)"
+                : $"{name}: variação do 1% low entre execuções {nz.RangePct:0.#}% ({(nz.Reliable ? "confiável" : "alta: o veredito vale menos")})";
+        }
+        var lines = new List<string> { Count(a, ra), Count(b, rb), NoiseLine(a, ra), NoiseLine(b, rb), "" };
         _lastComparison = ProfileComparer.CompareRuns(ra, rb);
         lines.AddRange(_lastComparison.Select(c => c.Line));
         foreach (var r in ra.Concat(rb).Where(x => !x.Valid))
@@ -295,5 +366,78 @@ public partial class MainWindow
             CsBenchStatus.Text = Cs2VideoConfig.Restore(path) ? "Vídeo do CS2 restaurado ao estado de antes dos testes." : "Não há backup para restaurar.";
         }
         catch (Exception ex) { CsBenchStatus.Text = ex.Message; }
+    }
+
+    // ------------------------------------------------------------------ vale comprar? e linha de base vencida
+
+    private void BtnPurchase_Click(object sender, RoutedEventArgs e)
+    {
+        string? baseline = BaselineProfile();
+        if (baseline == null) { BenchCompareLines.ItemsSource = new[] { "Grave a linha de base primeiro." }; return; }
+        string? real = SessionProfile.AllProfiles().FirstOrDefault(p => p.Contains("uso real", StringComparison.OrdinalIgnoreCase));
+        try { BenchCompareLines.ItemsSource = new[] { $"Linha de base: \"{baseline}\"" }.Concat(PurchaseVerdict.Evaluate(baseline, real)).ToList(); }
+        catch (Exception ex) { ErrorReporter.Log("vale comprar", ex); BenchCompareLines.ItemsSource = new[] { "Falhou: " + ex.Message }; }
+    }
+
+    /// <summary>Linha de base atual: a da matriz guiada, senão a escolhida em "Linha de base".</summary>
+    private string? BaselineProfile() => ExperimentMatrix.Load().BaselineProfile is { Length: > 0 } m ? m : CmbProfA.SelectedItem as string;
+
+    /// <summary>Avisa quando o CS2, o driver, o Windows ou a BIOS mudaram depois da última medição da linha de base (o PRD manda medir de novo).</summary>
+    private void UpdateBaselineWarning()
+    {
+        BenchBaselineWarn.Text = "";
+        try
+        {
+            if (BaselineProfile() is not string baseline) return;
+            var last = SessionProfile.Runs(baseline).LastOrDefault(r => r.Valid);
+            var newest = SessionStore.List().Select(i => SessionContext.Load(i.Folder)).FirstOrDefault(c => c != null);
+            if (last == null || newest == null || SessionContext.Load(last.Folder) is not SessionContext b) return;
+            var changed = new List<string>();
+            void Cmp(string what, string? x, string? y) { if (x != null && y != null && x != y) changed.Add($"{what} ({x} → {y})"); }
+            Cmp("CS2", b.Cs2Build, newest.Cs2Build);
+            Cmp("driver da GPU", b.DriverGpu, newest.DriverGpu);
+            Cmp("Windows", b.Windows, newest.Windows);
+            Cmp("BIOS", b.BiosVersao, newest.BiosVersao);
+            if (changed.Count > 0)
+                BenchBaselineWarn.Text = $"A linha de base \"{baseline}\" foi medida antes de mudar: {string.Join("; ", changed)}. Meça a linha de base de novo antes de comparar.";
+        }
+        catch (Exception ex) { ErrorReporter.Log("aviso de linha de base", ex); }
+    }
+
+    // ------------------------------------------------------------------ matriz guiada
+
+    private void RefreshMatrix()
+    {
+        var m = ExperimentMatrix.Load();
+        MatrixList.ItemsSource = m.Steps.OrderBy(x => x.Order).Select(x => x.Line).ToList();
+        MatrixNext.Text = m.Current is { } c
+            ? $"Próximo: \"{c.Profile}\" — mude só isto: {c.Change}. (hipótese: {c.Hypothesis})"
+            : "Matriz concluída. Use VALE COMPRAR? para a decisão de compra.";
+        MatrixBaseline.Text = m.BaselineProfile != null ? $"Linha de base atual: \"{m.BaselineProfile}\"" : "Linha de base ainda não medida.";
+    }
+
+    private void BtnMatrixUse_Click(object sender, RoutedEventArgs e)
+    {
+        if (ExperimentMatrix.Load().Current is not { } c) return;
+        SessProfile.Text = c.Profile;
+        if (string.IsNullOrWhiteSpace(TxtBenchRepeat.Text)) TxtBenchRepeat.Text = ProfileComparer.MinRuns.ToString();
+        CsBenchStatus.Text = $"Perfil \"{c.Profile}\" pronto. Faça a mudança ({c.Change}), abra o mapa e clique em CAPTURA CS2.";
+    }
+
+    private void BtnMatrixSkip_Click(object sender, RoutedEventArgs e)
+    {
+        var m = ExperimentMatrix.Load();
+        if (m.Current is not { } c) return;
+        c.Status = "pulado";
+        m.Save();
+        RefreshMatrix();
+    }
+
+    private void BtnMatrixReset_Click(object sender, RoutedEventArgs e)
+    {
+        if (MessageBox.Show(this, "Recomeçar a matriz do zero? As sessões gravadas continuam; só o andamento dos passos volta ao início.", "Matriz",
+                            MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
+        ExperimentMatrix.Default().Save();
+        RefreshMatrix();
     }
 }

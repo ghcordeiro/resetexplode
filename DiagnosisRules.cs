@@ -9,7 +9,8 @@ namespace ResetExplode;
 public sealed record DiagFacts(
     double? GpuLoadPctAtLowFps, double? BusiestThreadPctAtLowFps, double? RamUsedPct, int? RamMts, bool Ryzen5000, int? BiosAgeMonths,
     string? BiosDate, double? DropRegularity, double AvgFps, double Low1Fps, int MonitorHz, double FrametimeStdDevMs, bool FpsLimited,
-    double? ClockDropPctUnderLoad, double? CpuTempMax, bool SecondMonitorOtherHz, double? IndependentFlipPct, string? BackgroundCulprit);
+    double? ClockDropPctUnderLoad, double? CpuTempMax, bool SecondMonitorOtherHz, double? IndependentFlipPct, string? BackgroundCulprit,
+    double? PagingAtDropsPct = null, double? PagingPeak = null);
 
 /// <summary>Uma sugestão de experimento com a evidência que a motivou. <paramref name="Cost"/> = exige comprar algo.</summary>
 public sealed record Suggestion(string Rule, string Evidence, string Action, bool Cost)
@@ -46,6 +47,11 @@ public static class DiagnosisRules
         if (f.RamUsedPct > MemoryAbove)
             list.Add(new("Memória quase cheia", $"a RAM chegou a {N0(f.RamUsedPct!.Value)}% de uso.",
                 "medir com os programas do dia a dia abertos; se continuar acima de 85%, 32 GB.", true));
+
+        if (f.PagingAtDropsPct >= 50)
+            list.Add(new("Paginação nas quedas",
+                $"{N0(f.PagingAtDropsPct!.Value)}% das quedas coincidem com o Windows lendo memória do disco (pico de {N0(f.PagingPeak ?? 0)} páginas/s).",
+                "fechar navegador e programas pesados (e a aceleração de hardware do Discord) e medir de novo; se continuar no perfil de uso real, 32 GB.", true));
 
         if (cpuLimit && f.RamMts is int mts && mts <= 3200 && f.Ryzen5000)
             list.Add(new("Latência da RAM", $"a memória roda a {mts} MT/s num Ryzen 5000 e a CPU é o limite.",
@@ -128,6 +134,24 @@ public static class DiagnosisRules
             }
         }
 
+        // Paginação: % das quedas (em segundos) com páginas lidas do disco acima de 3x a mediana da sessão (mínimo 50/s)
+        double? pagingPct = null, pagingPeak = null;
+        var pg = CsvTable.Read(Path.Combine(folder, "sensores.csv"), c => c is "t_s" or "paginas_entrada_s");
+        if (pg != null && pg.Index.ContainsKey("paginas_entrada_s"))
+        {
+            var rows = pg.Rows.Select(rw => (T: pg.Num(rw, "t_s") ?? double.NaN, P: pg.Num(rw, "paginas_entrada_s"))).Where(x => x.P != null && !double.IsNaN(x.T)).ToList();
+            var drops = FrameMetrics.Drops(ProfileReport.ReadFrames(folder));
+            if (rows.Count >= 10 && drops.Count >= 4)
+            {
+                var sortedP = rows.Select(x => x.P!.Value).OrderBy(x => x).ToList();
+                double thr = Math.Max(50, 3 * sortedP[sortedP.Count / 2]);
+                var dropSecs = drops.Select(d => Math.Ceiling(d)).Distinct().ToList();
+                int hit = dropSecs.Count(sec => rows.Any(x => Math.Abs(x.T - sec) <= 1 && x.P > thr));
+                pagingPct = 100.0 * hit / dropSecs.Count;
+                pagingPeak = sortedP[^1];
+            }
+        }
+
         double? flip = null;
         if (r["exibicao"]?["modo_apresentacao_pct"] is JsonObject modes && modes.Count > 0)
             flip = modes.Where(kv => kv.Key.Contains("Independent Flip", StringComparison.OrdinalIgnoreCase)).Sum(kv => D(kv.Value) ?? 0);
@@ -142,6 +166,7 @@ public static class DiagnosisRules
 
         return new DiagFacts(gpuLow, threadLow, ramMax, ramMts, Regex.IsMatch(ctx?.Cpu ?? "", @"Ryzen \d 5\d{3}"), biosAge, ctx?.BiosData,
             D(r["quedas_regularidade"]), avg, low1, hz, D(r["desvio_padrao_ms"]) ?? 0,
-            int.TryParse(ctx?.Cs2FpsMax, out int fm) && fm > 0, clockDrop, D(r["cpu_temp_max_c"]), hzs.Count > 1, flip, culprit);
+            int.TryParse(ctx?.Cs2FpsMax, out int fm) && fm > 0, clockDrop, D(r["cpu_temp_max_c"]), hzs.Count > 1, flip, culprit,
+            pagingPct, pagingPeak);
     }
 }
