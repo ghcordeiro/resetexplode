@@ -121,7 +121,7 @@ public partial class MainWindow
             catch { /* anti-cheat pode negar a leitura */ }
             _sessionCtx = Task.Run(() =>
             {
-                var tweaksOn = WindowsTweaks.All().Where(t => { try { return t.Read() == true; } catch { return false; } }).Select(t => t.Title).ToList();
+                var tweaksOn = WindowsTweaks.All().Where(t => !t.Slow).Where(t => { try { return t.Read() == true; } catch { return false; } }).Select(t => t.Title).ToList();
                 var ctx = SessionContextCollector.Collect(exe, hwnd, nvml, cpu, gpuName, driver, tweaksOn);
                 ctx.EntradaMedida = inputTest;
                 ctx.Afinidade = affinityText;
@@ -130,7 +130,7 @@ public partial class MainWindow
             });
             if (_benchActive)
                 _benchRecollect = () => SessionContextCollector.Collect(exe, hwnd, nvml, cpu, gpuName, driver,
-                    WindowsTweaks.All().Where(t => { try { return t.Read() == true; } catch { return false; } }).Select(t => t.Title).ToList());
+                    WindowsTweaks.All().Where(t => !t.Slow).Where(t => { try { return t.Read() == true; } catch { return false; } }).Select(t => t.Title).ToList());
             AddEvent("", "Gravação de sessão", $"{session.Game} · começou", "ok");
         }
         catch (Exception ex)

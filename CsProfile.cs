@@ -16,6 +16,7 @@ public static class CsProfile
     {
         "SysMain", "Spooler", "Fax", "DiagTrack", "dmwappushservice", "MapsBroker", "XblAuthManager", "XblGameSave", "XboxGipSvc",
         "XboxNetApiSvc", "WerSvc", "RetailDemo", "PhoneSvc", "lfsvc", "RemoteRegistry", "BthAvctpSvc", "bthserv",
+        "WMPNetworkSvc", "icssvc", "WpcMonSvc", "SCardSvr", "TrkWks", "AJRouter", "wisvc", "SEMgrSvc", "WalletService",
     };
 
     /// <summary>Nunca desativar, mesmo que alguém acrescente por engano a lista acima: rede, áudio, segurança, atualização, discos, Steam, Razer e NVIDIA.</summary>
@@ -36,10 +37,16 @@ public static class CsProfile
         @"\Microsoft\Windows\Application Experience\ProgramDataUpdater",
         @"\Microsoft\Windows\Customer Experience Improvement Program\Consolidator",
         @"\Microsoft\Windows\Customer Experience Improvement Program\UsbCeip",
+        @"\Microsoft\Windows\Feedback\Siuf\DmClient",
+        @"\Microsoft\Windows\Feedback\Siuf\DmClientOnScenarioDownload",
+        @"\Microsoft\Windows\Shell\FamilySafetyMonitor",
+        @"\Microsoft\Windows\Shell\FamilySafetyRefreshTask",
+        @"\Microsoft\Windows\Maps\MapsUpdateTask",
+        @"\Microsoft\Windows\Maps\MapsToastTask",
     };
 
     /// <summary>Ajustes do Windows que ficam fora do APLICAR TUDO por serem experimentos a medir no benchmark, não ganhos garantidos.</summary>
-    public static readonly string[] ExperimentOnly = { "hags", "exp.dynamictick", "exp.prio" };
+    public static readonly string[] ExperimentOnly = { "hags", "exp.dynamictick", "exp.prio", "exp.timer", "exp.mpo", "exp.nicmod" };
 
     static CsProfile()
     {
@@ -47,7 +54,7 @@ public static class CsProfile
         if (clash.Count > 0) throw new InvalidOperationException("Serviço proibido na lista de desativação: " + string.Join(", ", clash));
     }
 
-    public static List<Tweak> Tweaks() => new()
+    public static List<Tweak> Tweaks() => new List<Tweak>
     {
         ServicesTweak(),
         Multi("cs.update", "Windows Update: horário ativo máximo e sem reinício com você logado",
@@ -103,7 +110,7 @@ public static class CsProfile
         StartupTweak(),
         SystemTimers.DynamicTick(),
         SystemTimers.PrioritySeparation(),
-    };
+    }.Concat(WindowsExtras.Phase1()).Concat(WindowsExtras.Phase2()).ToList();
 
     // ------------------------------------------------------------------ itens
 
@@ -249,7 +256,7 @@ public static class CsProfile
 
     private static Tweak TasksTweak() => new()
     {
-        Id = "cs.tasks", Title = "Tarefas de telemetria do Windows desativadas",
+        Id = "cs.tasks", Slow = true, Title = "Tarefas de telemetria do Windows desativadas",
         Description = "Desativa o Compatibility Appraiser, o ProgramDataUpdater e as tarefas do Programa de Melhoria da Experiência.",
         Effect = "Evita varreduras de disco e CPU que o Windows agenda sozinho.",
         Read = () => { var t = TaskPaths.Select(TaskEnabled).Where(x => x != null).ToList(); return t.Count > 0 && t.All(x => x == false); },

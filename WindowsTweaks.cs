@@ -20,6 +20,8 @@ public sealed class Tweak : INotifyPropertyChanged
     public string Description { get; init; } = "";
     public string Effect { get; init; } = "";
     public bool NeedsRestart { get; init; }
+    /// <summary>Ler o estado demora (PowerShell, schtasks): não entra no retrato das sessões e a página lê em segundo plano.</summary>
+    public bool Slow { get; init; }
     /// <summary>Preenchido nos ajustes que reduzem a segurança: texto do aviso mostrado antes de ligar.</summary>
     public string? Warning { get; init; }
     internal Func<bool?> Read { get; init; } = () => null;

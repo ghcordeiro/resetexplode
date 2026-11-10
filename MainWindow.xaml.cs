@@ -509,9 +509,13 @@ public partial class MainWindow : Window
         if (!_optInit)
         {
             _optInit = true;
-            foreach (var t in _tweaks)
-                try { t.Refresh(); } catch (Exception ex) { t.Status = $"Não foi possível ler: {ex.Message}"; }
             OptTweaks.ItemsSource = _tweaks;
+            // Alguns ajustes consultam PowerShell/agendador (segundos): lê fora da thread da tela; o interruptor acende quando a leitura termina.
+            _ = Task.Run(() =>
+            {
+                foreach (var t in _tweaks)
+                    try { t.Refresh(); } catch (Exception ex) { t.Status = $"Não foi possível ler: {ex.Message}"; }
+            });
         }
         RefreshShaderInfo();
         RefreshOverlays();

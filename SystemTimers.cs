@@ -83,7 +83,7 @@ public static class SystemTimers
 
     public static Tweak DynamicTick() => new()
     {
-        Id = "exp.dynamictick", Title = "Experimento: desligar o dynamic tick (bcdedit)",
+        Id = "exp.dynamictick", Slow = true, Title = "Experimento: desligar o dynamic tick (bcdedit)",
         Description = "O Windows para de pular os ticks do relógio quando ocioso. Mude, reinicie e meça como perfil da matriz; só mantenha se ganhar além do ruído.",
         Effect = "Em alguns PCs reduz travadas curtas; em outros não muda nada e gasta um pouco mais de energia. Bloqueado com BitLocker ligado.",
         NeedsRestart = true,
