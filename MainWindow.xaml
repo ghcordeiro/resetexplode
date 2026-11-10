@@ -1135,9 +1135,17 @@
                                         <TextBox x:Name="LNvFps" Width="80" Tag="sem limite"/>
                                         <TextBlock x:Name="LNvSuggest" Foreground="{DynamicResource Faint}" FontSize="11" VerticalAlignment="Center" Margin="12,0,0,0" TextWrapping="Wrap"/>
                                     </StackPanel>
-                                    <CheckBox x:Name="LNvLowLat" Content="Modo de baixa latência (Ligado: o driver não acumula frames na fila)" Margin="0,4,0,10"/>
+                                    <CheckBox x:Name="LNvLowLat" Content="Modo de baixa latência (Ligado: o driver não acumula frames na fila)" Margin="0,4,0,6"/>
+                                    <CheckBox x:Name="LNvMaxPerf" Content="Gerenciamento de energia: preferir desempenho máximo" Margin="0,0,0,6"/>
+                                    <TextBlock Text="V-Sync no driver" Foreground="{DynamicResource Muted}" FontSize="12"/>
+                                    <WrapPanel x:Name="LNvVsyncPanel" Margin="0,4,0,10">
+                                        <RadioButton Style="{StaticResource Chip}" GroupName="LNvVsync" Content="Como o jogo pedir" Tag="0" IsChecked="True"/>
+                                        <RadioButton Style="{StaticResource Chip}" GroupName="LNvVsync" Content="Desligado" Tag="off"/>
+                                        <RadioButton Style="{StaticResource Chip}" GroupName="LNvVsync" Content="Ligado" Tag="on"/>
+                                    </WrapPanel>
                                     <WrapPanel>
                                         <Button Style="{StaticResource OutlineButton}" Content="APLICAR NO DRIVER" Padding="14,8" Click="BtnNvApply_Click"/>
+                                        <Button Style="{StaticResource OutlineButton}" Content="REMOVER PERFIL DO RESET EXPLODE" Padding="14,8" Margin="8,0,0,0" Click="BtnNvRemove_Click"/>
                                     </WrapPanel>
                                     <TextBlock x:Name="LNvStatus" Foreground="{DynamicResource Muted}" FontSize="12" TextWrapping="Wrap" Margin="0,8,0,0"/>
                                 </StackPanel>

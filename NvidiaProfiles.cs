@@ -13,13 +13,16 @@ public static class NvidiaProfiles
 {
     public const uint FrameRateLimiter = 0x10835002; // FRL_FPS_ID: "Max Frame Rate" (0 = desligado)
     public const uint MaxPrerendered = 0x007BA09E;   // PRERENDERLIMIT_ID: 1 = "Modo de baixa latência: Ligado"
+    public const uint PreferredPState = 0x1057EB71;  // PREFERRED_PSTATE_ID: "Power management mode" (1 = preferir desempenho máximo)
+    public const uint VSyncMode = 0x00A879CF;        // VSYNCMODE_ID: "Vertical Sync"
+    public const uint VSyncApp = 0x60925292, VSyncOff = 0x08416747, VSyncOn = 0x47814940;
     public const string OurPrefix = "RESET EXPLODE - ";
 
     private const int UnicodeBytes = 2048 * 2;                       // NvAPI_UnicodeString
     private const int SettingSize = 12320, ProfileSize = 4116, AppSize = 12296;
     private const uint SettingVer = SettingSize | (1 << 16), ProfileVer = ProfileSize | (1 << 16), AppVer = AppSize | (1 << 16);
 
-    public sealed record State(string Profile, bool Ours, uint? FpsLimit, uint? Prerendered);
+    public sealed record State(string Profile, bool Ours, uint? FpsLimit, uint? Prerendered, uint? PState = null, uint? VSync = null);
 
     // ---- NVAPI: só nvapi_QueryInterface é exportada; cada função vem pelo ID ----
     [DllImport("nvapi64.dll", EntryPoint = "nvapi_QueryInterface", CallingConvention = CallingConvention.Cdecl)]
@@ -75,7 +78,8 @@ public static class NvidiaProfiles
         {
             if (FindApp(s, exeName) is not IntPtr profile) return null;
             string name = ProfileName(s, profile);
-            return new State(name, name.StartsWith(OurPrefix), GetDword(s, profile, FrameRateLimiter), GetDword(s, profile, MaxPrerendered));
+            return new State(name, name.StartsWith(OurPrefix), GetDword(s, profile, FrameRateLimiter), GetDword(s, profile, MaxPrerendered),
+                             GetDword(s, profile, PreferredPState), GetDword(s, profile, VSyncMode));
         }, save: false);
     }
 
@@ -110,6 +114,48 @@ public static class NvidiaProfiles
             return $"Gravado {where}: " + (fpsLimit > 0 ? $"limite de {fpsLimit} FPS" : "sem limite de FPS") +
                    (lowLatency ? ", baixa latência ligada." : ", baixa latência como o jogo pedir.");
         }, save: true) ?? "Falhou.";
+    }
+
+    /// <summary>
+    /// Modo de energia (desempenho máximo) e V-Sync no perfil do .exe. Cada ID só é gravado depois de o driver confirmar o nome da
+    /// configuração; se o nome não bater, nada é gravado. <paramref name="vsync"/>: 0 = deixar o jogo decidir (remove), ou VSyncApp/Off/On.
+    /// </summary>
+    public static string ApplyExtra(string exeName, bool maxPerformance, uint vsync)
+    {
+        if (!Available) return "Driver NVIDIA (NVAPI) não encontrado.";
+        Verify(PreferredPState, "power");
+        Verify(VSyncMode, "vertical");
+        return WithSession(s =>
+        {
+            IntPtr profile = FindApp(s, exeName) ?? CreateProfileFor(s, exeName);
+            if (maxPerformance) Check(SetDword(s, profile, PreferredPState, 1), "gravar o modo de energia");
+            else DeleteSetting(s, profile, PreferredPState);
+            if (vsync != 0) Check(SetDword(s, profile, VSyncMode, vsync), "gravar o V-Sync");
+            else DeleteSetting(s, profile, VSyncMode);
+            return $"Gravado em \"{ProfileName(s, profile)}\": energia {(maxPerformance ? "desempenho máximo" : "padrão")}, V-Sync " +
+                   (vsync switch { VSyncOff => "desligado", VSyncOn => "ligado", VSyncApp => "do jogo", _ => "como estava" }) + ".";
+        }, save: true) ?? "Falhou.";
+    }
+
+    /// <summary>Remove os ajustes que o RESET EXPLODE gravou (limite de fps, baixa latência, energia e V-Sync). Apaga o perfil se ele foi criado por nós.</summary>
+    public static string RemoveAll(string exeName)
+    {
+        if (!Available) return "Driver NVIDIA (NVAPI) não encontrado.";
+        return WithSession(s =>
+        {
+            if (FindApp(s, exeName) is not IntPtr profile) return "Este jogo não tem perfil no driver.";
+            bool ours = ProfileName(s, profile).StartsWith(OurPrefix);
+            if (!ours) return "O perfil do jogo é do próprio driver da NVIDIA; use o Painel de Controle NVIDIA para mexer nele.";
+            Check(Fn<FnHandle2>(0x17093206)(s, profile), "apagar o perfil");
+            return "Perfil do RESET EXPLODE removido do driver.";
+        }, save: true) ?? "Falhou.";
+    }
+
+    private static void Verify(uint id, string expectedFragment)
+    {
+        string? name = SettingName(id);
+        if (name == null || !name.Contains(expectedFragment, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException($"NVIDIA: a configuração 0x{id:X8} se chama \"{name ?? "?"}\" neste driver, não o esperado ({expectedFragment}). Não gravei nada.");
     }
 
     // ------------------------------------------------------------------ sessão DRS

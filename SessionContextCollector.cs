@@ -46,7 +46,7 @@ public static class SessionContextCollector
             Try(c, "perfil_nvidia", () =>
             {
                 if (NvidiaProfiles.Available && NvidiaProfiles.Read("cs2.exe") is { } st)
-                    c.PerfilNvidia = $"{st.Profile}; limite de fps {(st.FpsLimit is uint f ? (f == 0 ? "desligado" : f.ToString()) : "padrão")}; pré-renderizados {(st.Prerendered?.ToString() ?? "padrão")}";
+                    c.PerfilNvidia = $"{st.Profile}; limite de fps {(st.FpsLimit is uint f ? (f == 0 ? "desligado" : f.ToString()) : "padrão")}; pré-renderizados {(st.Prerendered?.ToString() ?? "padrão")}; energia {(st.PState == 1 ? "desempenho máximo" : st.PState?.ToString() ?? "padrão")}; V-Sync {(st.VSync switch { NvidiaProfiles.VSyncOff => "desligado", NvidiaProfiles.VSyncOn => "ligado", NvidiaProfiles.VSyncApp => "do jogo", null => "padrão", var v => v.ToString() })}";
             });
         }
         return c;

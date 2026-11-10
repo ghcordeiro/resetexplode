@@ -21,6 +21,8 @@ public partial class MainWindow
         if (!nv || _lg != g) return;
         LNvFps.Text = p.NvFpsLimit > 0 ? p.NvFpsLimit.ToString() : "";
         LNvLowLat.IsChecked = p.NvLowLatency;
+        LNvMaxPerf.IsChecked = p.NvMaxPerf;
+        SetChip(LNvVsyncPanel, p.NvVsync);
         var mon = await Task.Run(SessionContextCollector.PrimaryMonitor);
         LNvSuggest.Text = mon is { HzAtual: > 60 } m ? $"sugestão: {m.HzAtual - 3} (monitor de {m.HzAtual} Hz, fica dentro do G-Sync/FreeSync)" : "";
         string? exe = GameExeName(g, p);
@@ -30,7 +32,9 @@ public partial class MainWindow
         if (_lg != g) return;
         LNvStatus.Text = state.Item2 ?? (state.Item1 is { } st
             ? $"No driver ({exe}, perfil \"{st.Profile}\"): " + (st.FpsLimit is uint f && f > 0 ? $"limite de {f} FPS" : "sem limite de FPS") +
-              (st.Prerendered == 1 ? ", baixa latência ligada." : ", baixa latência como o jogo pedir.")
+              (st.Prerendered == 1 ? ", baixa latência ligada" : ", baixa latência como o jogo pedir") +
+              (st.PState == 1 ? ", energia em desempenho máximo" : "") +
+              (st.VSync == NvidiaProfiles.VSyncOff ? ", V-Sync desligado" : st.VSync == NvidiaProfiles.VSyncOn ? ", V-Sync ligado" : "") + "."
             : $"No driver: {exe} sem perfil (usa as opções globais da NVIDIA).");
     }
 
@@ -55,10 +59,30 @@ public partial class MainWindow
         bool low = LNvLowLat.IsChecked == true;
         LNvStatus.Text = "Gravando no driver…";
         string msg = await Task.Run(() => { try { return NvidiaProfiles.Apply(exe, fps, low); } catch (Exception ex) { return ex.Message; } });
+        bool maxPerf = LNvMaxPerf.IsChecked == true;
+        string vs = CheckedTag(LNvVsyncPanel) ?? "0";
+        uint vsValue = vs switch { "off" => NvidiaProfiles.VSyncOff, "on" => NvidiaProfiles.VSyncOn, _ => 0u };
+        bool touchExtra = maxPerf || vsValue != 0 || p.NvMaxPerf || p.NvVsync != "0";
+        if (touchExtra)
+            msg += " " + await Task.Run(() => { try { return NvidiaProfiles.ApplyExtra(exe, maxPerf, vsValue); } catch (Exception ex) { return ex.Message; } });
         p.NvFpsLimit = (int)fps;
         p.NvLowLatency = low;
+        p.NvMaxPerf = maxPerf;
+        p.NvVsync = vs;
         try { _settings.Save(); } catch { }
         if (_lg == g) LNvStatus.Text = msg;
+    }
+
+    private async void BtnNvRemove_Click(object sender, RoutedEventArgs e)
+    {
+        if (_lg is not LibGame g || _lp is not GameProfile p) return;
+        string? exe = GameExeName(g, p);
+        if (exe == null) { LNvStatus.Text = "Escolha o .exe do jogo primeiro (ESCOLHER O .EXE)."; return; }
+        LNvStatus.Text = "Removendo do driver…";
+        string msg = await Task.Run(() => { try { return NvidiaProfiles.RemoveAll(exe); } catch (Exception ex) { return ex.Message; } });
+        p.NvFpsLimit = 0; p.NvLowLatency = false; p.NvMaxPerf = false; p.NvVsync = "0";
+        try { _settings.Save(); } catch { }
+        if (_lg == g) { LNvFps.Text = ""; LNvLowLat.IsChecked = false; LNvMaxPerf.IsChecked = false; SetChip(LNvVsyncPanel, "0"); LNvStatus.Text = msg; }
     }
 
     // ---------------- RESET OTIMIZA · cache de shaders ----------------
