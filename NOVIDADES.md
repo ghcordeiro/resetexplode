@@ -21,6 +21,9 @@ Versão pessoal do RESET EXPLODE, só para CS2 neste PC. Mede a estabilidade do 
 - **Aviso de linha de base vencida** quando CS2, driver, Windows ou BIOS mudam depois da medição.
 - **Overlays e aceleração** (Otimização): desliga a aceleração de hardware do Discord (com restauração) e mostra onde desligar os overlays de Discord, Steam e NVIDIA.
   Xbox Game Bar entrou nos ajustes do Windows.
+- **Modo CS automático** (Otimização): quando o CS2 abre, de qualquer jeito, troca a área de trabalho para 1280x960, fecha o que não está na lista,
+  limpa a RAM, para SysMain/Windows Search/Spooler/Windows Update, sobe a prioridade e liga o Alto desempenho; desfaz tudo quando o jogo fecha.
+- **Apps pré-instalados** (Otimização): remove Clipchamp, Notícias, Clima, Xbox, Teams pessoal e afins só para o seu usuário, com reinstalação pela Store.
 
 **Sessões › Benchmark CS2**
 - **Perfil de teste** (ex.: "linha de base", "fps_max 240"): cada captura é gravada com o nome do perfil e nunca é apagada pela limpeza de espaço.

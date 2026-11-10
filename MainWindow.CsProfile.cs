@@ -76,4 +76,50 @@ public partial class MainWindow
         catch (Exception ex) { OverlayStatus.Text = ex.Message; }
         RefreshOverlays();
     }
+
+    // ---- apps pré-instalados ----
+
+    private List<BloatApp> _bloat = new();
+
+    private async void BtnBloatList_Click(object sender, RoutedEventArgs e)
+    {
+        BloatStatus.Text = "Listando…";
+        try
+        {
+            _bloat = await Task.Run(Debloat.Installed);
+            BloatList.ItemsSource = _bloat;
+            BloatStatus.Text = _bloat.Count == 0 ? "Nenhum app da lista instalado." : $"{_bloat.Count} app(s) da lista instalados. Desmarque o que quiser manter.";
+        }
+        catch (Exception ex) { BloatStatus.Text = "Falhou: " + ex.Message; ErrorReporter.Log("debloat (listar)", ex); }
+    }
+
+    private async void BtnBloatRemove_Click(object sender, RoutedEventArgs e)
+    {
+        var sel = _bloat.Where(a => a.Selected).ToList();
+        if (sel.Count == 0) { BloatStatus.Text = "Clique em LISTAR e marque os apps."; return; }
+        if (MessageBox.Show(this, "Remover para o seu usuário:\n\n" + string.Join("\n", sel.Select(a => "  • " + a.Title)) +
+                            "\n\nPara voltar, use REINSTALAR PELA STORE. Continuar?", "Apps pré-instalados", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
+        BtnBloatRemove.IsEnabled = false;
+        BloatStatus.Text = "Removendo…";
+        try
+        {
+            var (removed, failed) = await Task.Run(() => Debloat.Remove(sel));
+            BloatStatus.Text = $"{removed.Count} removido(s)." + (failed.Count > 0 ? " Não removidos: " + string.Join("; ", failed) : "");
+            _bloat = await Task.Run(Debloat.Installed);
+            BloatList.ItemsSource = _bloat;
+        }
+        catch (Exception ex) { BloatStatus.Text = "Falhou: " + ex.Message; ErrorReporter.Log("debloat (remover)", ex); }
+        finally { BtnBloatRemove.IsEnabled = true; }
+    }
+
+    private void BtnBloatRestore_Click(object sender, RoutedEventArgs e)
+    {
+        var removed = Debloat.LoadRemoved();
+        if (removed.Count == 0) { BloatStatus.Text = "Nenhum app foi removido pelo RESET EXPLODE."; return; }
+        var pick = removed.First();
+        Debloat.OpenInStore(pick.Key);
+        removed.Remove(pick.Key);
+        try { System.IO.File.WriteAllText(System.IO.Path.Combine(AppSettings.Folder, "debloat-removidos.json"), System.Text.Json.JsonSerializer.Serialize(removed)); } catch { }
+        BloatStatus.Text = $"Store aberta em \"{pick.Value}\": clique em Obter. Faltam {removed.Count}.";
+    }
 }

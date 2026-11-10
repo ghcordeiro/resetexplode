@@ -1831,6 +1831,33 @@
                                 <TextBlock x:Name="OverlayStatus" TextWrapping="Wrap" FontWeight="SemiBold" Margin="0,8,0,0"/>
                             </StackPanel>
                         </Border>
+                        <!-- Apps pré-instalados -->
+                        <Border Style="{StaticResource CardBorder}" Margin="0,14,0,0">
+                            <StackPanel>
+                                <Grid Margin="0,0,0,6">
+                                    <TextBlock Text="APPS PRÉ-INSTALADOS" Style="{StaticResource Label}"/>
+                                    <Button Style="{StaticResource OutlineButton}" Content="LISTAR" Padding="10,4" FontSize="11"
+                                            HorizontalAlignment="Right" VerticalAlignment="Top" Click="BtnBloatList_Click"/>
+                                </Grid>
+                                <TextBlock Foreground="{DynamicResource Faint}" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,10">
+                                    Remove só para o seu usuário os apps da Store que vêm com o Windows e não servem a este PC. A Store, o winget, a segurança do Windows,
+                                    a calculadora, o bloco de notas e as bibliotecas que outros apps usam nunca aparecem aqui. Para voltar, reinstale pela Store (botão abaixo).
+                                    Ganho de fps pequeno: vale pela limpeza.
+                                </TextBlock>
+                                <ItemsControl x:Name="BloatList">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <CheckBox IsChecked="{Binding Selected}" Content="{Binding Title}" Margin="0,0,0,4"/>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                                    <Button x:Name="BtnBloatRemove" Style="{StaticResource PrimaryButton}" Content="REMOVER MARCADOS" Padding="14,7" Margin="0,0,8,0" Click="BtnBloatRemove_Click"/>
+                                    <Button Style="{StaticResource OutlineButton}" Content="REINSTALAR PELA STORE" Padding="14,7" Click="BtnBloatRestore_Click"/>
+                                </StackPanel>
+                                <TextBlock x:Name="BloatStatus" TextWrapping="Wrap" FontWeight="SemiBold" Margin="0,8,0,0"/>
+                            </StackPanel>
+                        </Border>
                         <!-- OPT-END -->
                     </StackPanel>
                 </ScrollViewer>
