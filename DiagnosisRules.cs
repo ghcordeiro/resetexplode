@@ -10,7 +10,7 @@ public sealed record DiagFacts(
     double? GpuLoadPctAtLowFps, double? BusiestThreadPctAtLowFps, double? RamUsedPct, int? RamMts, bool Ryzen5000, int? BiosAgeMonths,
     string? BiosDate, double? DropRegularity, double AvgFps, double Low1Fps, int MonitorHz, double FrametimeStdDevMs, bool FpsLimited,
     double? ClockDropPctUnderLoad, double? CpuTempMax, bool SecondMonitorOtherHz, double? IndependentFlipPct, string? BackgroundCulprit,
-    double? PagingAtDropsPct = null, double? PagingPeak = null);
+    double? PagingAtDropsPct = null, double? PagingPeak = null, double? SystemWaitDropPct = null, double? CpuDropPct = null);
 
 /// <summary>Uma sugestão de experimento com a evidência que a motivou. <paramref name="Cost"/> = exige comprar algo.</summary>
 public sealed record Suggestion(string Rule, string Evidence, string Action, bool Cost)
@@ -32,11 +32,13 @@ public static class DiagnosisRules
         var list = new List<Suggestion>();
         string N0(double v) => v.ToString("0", CultureInfo.CurrentCulture);
 
-        bool cpuLimit = f.GpuLoadPctAtLowFps < CpuLimitGpuBelow && f.BusiestThreadPctAtLowFps > CpuLimitThreadAbove;
+        bool cpuLimit = (f.GpuLoadPctAtLowFps < CpuLimitGpuBelow && f.BusiestThreadPctAtLowFps > CpuLimitThreadAbove)
+                        || (f.CpuDropPct >= 60 && f.GpuLoadPctAtLowFps < CpuLimitGpuBelow);
         if (cpuLimit)
         {
             list.Add(new("Limite de CPU em poucos threads",
-                $"nos segundos de fps mais baixo a GPU estava em {N0(f.GpuLoadPctAtLowFps!.Value)}% e o thread mais ocupado em {N0(f.BusiestThreadPctAtLowFps!.Value)}% (o uso total da CPU esconde isso).",
+                $"nos segundos de fps mais baixo a GPU estava em {N0(f.GpuLoadPctAtLowFps ?? 0)}% e o thread mais ocupado em {N0(f.BusiestThreadPctAtLowFps ?? 0)}%" +
+                (f.CpuDropPct is double cd ? $"; {N0(cd)}% das quedas foram com a CPU ocupada." : " (o uso total da CPU esconde isso)."),
                 "testar um limite de fps, fechar programas em segundo plano e RAM mais rápida; cada um como perfil separado.", false));
             if (f.Low1Fps < f.MonitorHz)
                 list.Add(new("Cache L3 do processador",
@@ -47,6 +49,11 @@ public static class DiagnosisRules
         if (f.RamUsedPct > MemoryAbove)
             list.Add(new("Memória quase cheia", $"a RAM chegou a {N0(f.RamUsedPct!.Value)}% de uso.",
                 "medir com os programas do dia a dia abertos; se continuar acima de 85%, 32 GB.", true));
+
+        if (f.SystemWaitDropPct >= 40)
+            list.Add(new("Quedas por espera do sistema",
+                $"em {N0(f.SystemWaitDropPct!.Value)}% das quedas nem a CPU nem a GPU estavam trabalhando: o jogo esperou o Windows.",
+                "rodar uma captura com o diagnóstico profundo (DPC/ISR) para achar o driver, e conferir paginação e programas em segundo plano.", false));
 
         if (f.PagingAtDropsPct >= 50)
             list.Add(new("Paginação nas quedas",
@@ -113,6 +120,9 @@ public static class DiagnosisRules
             string? ramCol = sens.Index.Keys.FirstOrDefault(k => Regex.IsMatch(k, @"\| Memory \(%\)$") && !k.Contains("Virtual", StringComparison.OrdinalIgnoreCase));
             var threadCols = sens.Index.Keys.Where(k => Regex.IsMatch(k, @"CPU Core #\d+( Thread #\d+)? \(%\)$")).ToList();
             var clockCols = sens.Index.Keys.Where(k => Regex.IsMatch(k, @"Core #\d+.*\(MHz\)$") && !k.Contains("Bus", StringComparison.OrdinalIgnoreCase)).ToList();
+            // O clock "Effective" do LibreHardwareMonitor conta o tempo em que o núcleo dormiu ou esticou o clock (clock stretching): é o que importa aqui.
+            var effective = clockCols.Where(k => k.Contains("Effective", StringComparison.OrdinalIgnoreCase)).ToList();
+            if (effective.Count > 0) clockCols = effective;
             var fpsPerRow = sens.Rows.Select(row => sens.Num(row, "fps") ?? 0).ToList();
             double lowCut = fpsPerRow.Where(x => x > 0).OrderBy(x => x).ElementAtOrDefault(Math.Max(0, (int)(fpsPerRow.Count * 0.10)));
             var lowRows = sens.Rows.Where((row, i) => fpsPerRow[i] > 0 && fpsPerRow[i] <= lowCut).ToList();
@@ -152,6 +162,13 @@ public static class DiagnosisRules
             }
         }
 
+        double? sysWait = null, cpuDrop = null;
+        if (r["exibicao"]?["quedas_causa_pct"] is JsonObject qc)
+        {
+            sysWait = D(qc["Sistema"]) ?? 0;
+            cpuDrop = D(qc["CPU"]) ?? 0;
+        }
+
         double? flip = null;
         if (r["exibicao"]?["modo_apresentacao_pct"] is JsonObject modes && modes.Count > 0)
             flip = modes.Where(kv => kv.Key.Contains("Independent Flip", StringComparison.OrdinalIgnoreCase)).Sum(kv => D(kv.Value) ?? 0);
@@ -167,6 +184,6 @@ public static class DiagnosisRules
         return new DiagFacts(gpuLow, threadLow, ramMax, ramMts, Regex.IsMatch(ctx?.Cpu ?? "", @"Ryzen \d 5\d{3}"), biosAge, ctx?.BiosData,
             D(r["quedas_regularidade"]), avg, low1, hz, D(r["desvio_padrao_ms"]) ?? 0,
             int.TryParse(ctx?.Cs2FpsMax, out int fm) && fm > 0, clockDrop, D(r["cpu_temp_max_c"]), hzs.Count > 1, flip, culprit,
-            pagingPct, pagingPeak);
+            pagingPct, pagingPeak, sysWait, cpuDrop);
     }
 }

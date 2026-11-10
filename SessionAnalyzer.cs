@@ -135,6 +135,14 @@ public static class SessionAnalyzer
                 lines.Add(new(AvisoNivel.Dica, $"FPS ({fe:0}) bem acima da taxa do monitor ({h4} Hz) e com tearing: limitar a ~{h4 - 3} FPS reduz calor e consumo; com G-Sync/FreeSync, também a latência."));
         }
 
+        // 4a) Causa das quedas frame a frame (PresentMon)
+        if (exib?["quedas_causa_pct"] is JsonObject causes2 && causes2.Count > 0)
+        {
+            string Pct(string k) => D(causes2, k) is double v ? $"{v:0}%" : "0%";
+            lines.Add(new(null, $"Quedas medidas frame a frame ({D(exib, "quedas"):0}): CPU ocupada em {Pct("CPU")}, GPU em {Pct("GPU")} e " +
+                                $"espera do sistema em {Pct("Sistema")} (nem CPU nem GPU trabalhando: driver, interrupção, paginação ou sincronia)."));
+        }
+
         // 4b) Alt-tab: tempo para o jogo voltar ao ritmo normal
         if (r["alttab_ms"] is JsonArray alts && alts.Count > 0 && D(r, "alttab_mediana_ms") is double altMed)
             lines.Add(altMed >= 2000

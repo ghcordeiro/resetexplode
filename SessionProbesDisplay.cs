@@ -131,6 +131,35 @@ public sealed class DisplayAggregator
     public long Presents { get; private set; }
     public long Displayed { get; private set; }
 
+    // Quedas frame a frame (mesma regra do FrameMetrics.Drops: frame acima de 2,5x a mediana do último segundo), com a causa daquele frame.
+    private readonly Queue<(double T, float Ms)> _win = new();
+    private double _dropThreshold, _lastThresholdAt = double.NegativeInfinity;
+    private readonly Dictionary<string, int> _dropCauses = new();
+    private int _drops;
+
+    /// <summary>Causa de um frame longo pelo que o PresentMon mediu NELE: GPU ou CPU ocupadas quase o frame todo, ou nenhuma (o jogo esperou o sistema).</summary>
+    public static string DropCause(double frameMs, double? cpuMs, double? gpuMs) =>
+        gpuMs >= frameMs * 0.8 ? "GPU" : cpuMs >= frameMs * 0.8 ? "CPU" : "Sistema";
+
+    private void TrackDrop(double tMs, double between, double? cpu, double? gpu)
+    {
+        _win.Enqueue((tMs, (float)between));
+        while (_win.Count > 0 && tMs - _win.Peek().T > 1000) _win.Dequeue();
+        if (_win.Count >= 20 && tMs - _lastThresholdAt >= 100)
+        {
+            var arr = _win.Select(x => x.Ms).ToArray();
+            Array.Sort(arr);
+            _dropThreshold = 2.5 * arr[arr.Length / 2];
+            _lastThresholdAt = tMs;
+        }
+        if (_dropThreshold > 0 && between > _dropThreshold)
+        {
+            _drops++;
+            string c = DropCause(between, cpu, gpu);
+            _dropCauses[c] = _dropCauses.GetValueOrDefault(c) + 1;
+        }
+    }
+
     public DisplayAggregator(string header)
     {
         var cols = header.Split(',').Select(c => c.Trim()).ToList();
@@ -154,7 +183,7 @@ public sealed class DisplayAggregator
         if (!_seconds.TryGetValue(sec, out var b)) _seconds[sec] = b = new Bucket();
         Presents++; b.Presents++;
 
-        if (N(_between) is double btw) { b.Between += btw; b.BetweenN++; _betweenSum += btw; _betweenN++; }
+        if (N(_between) is double btw) { b.Between += btw; b.BetweenN++; _betweenSum += btw; _betweenN++; TrackDrop(tMs, btw, N(_cpu), N(_gpu)); }
         if (N(_until) is double until)
         {
             Displayed++; b.Displayed++;
@@ -239,6 +268,9 @@ public sealed class DisplayAggregator
                 .ToDictionary(kv => kv.Key, kv => Math.Round(100.0 * kv.Value / Math.Max(1, Presents), 1)),
             ["tearing_permitido_pct"] = Math.Round(100.0 * _tearingAll / Math.Max(1, Presents), 1),
             ["frames_gerados_pct"] = _frameType >= 0 ? Math.Round(100.0 * _frameGenAll / Math.Max(1, Presents), 1) : null,
+            ["quedas"] = _drops,
+            ["quedas_causa_pct"] = _drops == 0 || (_cpu < 0 && _gpu < 0) ? null
+                : _dropCauses.OrderByDescending(kv => kv.Value).ToDictionary(kv => kv.Key, kv => Math.Round(100.0 * kv.Value / _drops)),
         };
     }
 
