@@ -91,6 +91,7 @@ public partial class MainWindow : Window
         // A janela aparece já; as coletas pesadas (WMI, sensores, GPU) rodam em paralelo fora da thread da janela.
         Loaded += async (_, _) => await LoadHardwareAsync();
         Loaded += (_, _) => InitUpdates();
+        Loaded += (_, _) => InitGameMode();
 
         _timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
         _timer.Tick += (_, _) =>
@@ -514,6 +515,7 @@ public partial class MainWindow : Window
         }
         RefreshShaderInfo();
         RefreshOverlays();
+        LoadGameModeOptions();
         RefreshApps();
         UpdateRamStatus();
     }

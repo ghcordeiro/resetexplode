@@ -61,6 +61,7 @@ public sealed class AppSettings
     private static string FilePath => Path.Combine(Folder, "settings.json");
 
     public string? GitHubTokenProtected { get; set; }
+    public GameModeOptions GameMode { get; set; } = new();
 
     public List<BenchRecord> BenchRecords { get; set; } = new();
 

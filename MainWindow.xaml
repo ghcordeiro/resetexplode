@@ -1770,6 +1770,26 @@
                             </Grid>
                         </Border>
 
+                        <!-- Modo CS automático -->
+                        <Border Style="{StaticResource CardBorder}" Margin="0,14,0,0">
+                            <StackPanel>
+                                <TextBlock Text="MODO CS AUTOMÁTICO" Style="{StaticResource Label}"/>
+                                <TextBlock Foreground="{DynamicResource Faint}" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,10">
+                                    Quando o CS2 abre (pela Steam, pelo JOGAR ou como for), o app capa o Windows; quando o jogo fecha, desfaz tudo. Nada é permanente:
+                                    serviços são só parados e voltam, resolução e plano de energia voltam ao anterior, mesmo se o app fechar no meio.
+                                    Deixe igual em todas as medições da matriz. Com "uso real" no nome do perfil, ele não fecha programas.
+                                </TextBlock>
+                                <CheckBox x:Name="ChkGmEnabled" Content="Ligar o Modo CS automático" FontWeight="SemiBold" Margin="0,0,0,8" Click="GameModeOption_Click"/>
+                                <CheckBox x:Name="ChkGmDesktop" Content="Área de trabalho do monitor principal em 1280x960 (alt-tab sem trocar o modo do monitor)" Margin="0,0,0,4" Click="GameModeOption_Click"/>
+                                <CheckBox x:Name="ChkGmClose" Content="Fechar programas fora da lista (Steam, Discord, Razer, áudio, NVIDIA e FACEIT ficam), sem forçar" Margin="0,0,0,4" Click="GameModeOption_Click"/>
+                                <CheckBox x:Name="ChkGmMemory" Content="Limpar a memória em espera" Margin="0,0,0,4" Click="GameModeOption_Click"/>
+                                <CheckBox x:Name="ChkGmServices" Content="Parar SysMain, Windows Search, Spooler e Windows Update durante o jogo" Margin="0,0,0,4" Click="GameModeOption_Click"/>
+                                <CheckBox x:Name="ChkGmPriority" Content="Prioridade alta para o CS2" Margin="0,0,0,4" Click="GameModeOption_Click"/>
+                                <CheckBox x:Name="ChkGmPower" Content="Plano Alto desempenho durante o jogo" Margin="0,0,0,4" Click="GameModeOption_Click"/>
+                                <TextBlock x:Name="GameModeStatus" TextWrapping="Wrap" FontWeight="SemiBold" Margin="0,8,0,0"/>
+                            </StackPanel>
+                        </Border>
+
                         <!-- Overlays e aceleração -->
                         <Border Style="{StaticResource CardBorder}" Margin="0,14,0,0">
                             <StackPanel>
