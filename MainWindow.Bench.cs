@@ -226,9 +226,15 @@ public partial class MainWindow
         extra["perfil"] = bench.Profile;
         extra["aquecimento"] = bench.WarmUp;
 
-        bool ctxChanged = false;
+        bool ctxChanged = false; string changedFields = "";
         if (bench.Recollect != null && ctx != null && !bench.GameClosed)
-            try { ctxChanged = Fingerprint(bench.Recollect()) != Fingerprint(ctx); } catch { }
+            try
+            {
+                var a0 = Fingerprint(ctx); var a1 = Fingerprint(bench.Recollect());
+                var diff = a0.Keys.Where(k => a0[k] != a1.GetValueOrDefault(k)).ToList();
+                ctxChanged = diff.Count > 0; changedFields = string.Join(", ", diff);
+            }
+            catch { }
         bool pmLost = extra.TryGetValue("exibicao", out var ex) && ex?.GetType().GetProperty("erro") != null;
 
         // O mapa analisa uma janela (N frames; o resto é aquecimento). Alinha a captura a ela: os últimos N frames, para o 1% low bater com o P1 do mapa.
@@ -250,6 +256,7 @@ public partial class MainWindow
 
         var preview = s.Preview();
         string? invalid = RunValidator.Validate(new RunFacts(preview.Frames, s.Elapsed.TotalSeconds, bench.LostFocus, ctxChanged, pmLost, bench.AntiCheat));
+        if (invalid != null && changedFields.Length > 0) invalid = invalid.Replace("configuração mudou durante a captura", $"configuração mudou durante a captura ({changedFields})");
         if (!covered) invalid = (invalid == null ? "" : invalid + "; ") + "a captura começou depois do início da passada do mapa";
         extra["valida"] = invalid == null;
         extra["motivo_invalida"] = invalid;
@@ -260,21 +267,24 @@ public partial class MainWindow
             extra["p1_mapa"] = v.P1;
             double diff = VProfLog.DiffPct(preview.Low1Fps, v.P1);
             extra["p1_mapa_diferenca_pct"] = Math.Round(diff, 1);
-            if (Math.Abs(diff) > 5)
+            // O mapa mede o tempo de CPU do jogo; o app mede a entrega dos quadros (PresentMon). Uma diferença de 10–15% é normal e igual em todas as execuções; só avisa se for grande.
+            if (Math.Abs(diff) > 25)
             {
                 var avisos = extra.GetValueOrDefault("avisos") as List<string> ?? new List<string>();
-                avisos.Add($"AVISO: o 1% low calculado ({preview.Low1Fps:0}) difere {diff:+0.#;-0.#}% do P1 impresso pelo mapa ({v.P1:0.#}).");
+                avisos.Add($"AVISO: o 1% low calculado ({preview.Low1Fps:0}) difere {diff:+0.#;-0.#}% do P1 impresso pelo mapa ({v.P1:0.#}): confira se a captura começou antes da passada.");
                 extra["avisos"] = avisos;
             }
         }
     }
 
     /// <summary>Resumo do que pode mudar uma medição: driver, energia, monitor, RAM e ajustes do Windows.</summary>
-    private static string Fingerprint(SessionContext c) => string.Join("|", new object?[]
+    /// <summary>O que, se mudar no meio da captura, invalida a medição. A lista de ajustes ligados não entra: ela oscila sozinha (ex.: um programa que se reinscreve na inicialização).</summary>
+    private static Dictionary<string, string> Fingerprint(SessionContext c) => new()
     {
-        c.DriverGpu, c.PlanoEnergia, c.Hags, c.ModoJogo, c.VrrWindows, c.Monitor?.Largura, c.Monitor?.Altura, c.Monitor?.HzAtual,
-        string.Join(",", c.Ram.Select(r => r.VelocidadeConfiguradaMts)), string.Join(",", c.AjustesLigados.OrderBy(x => x)),
-    });
+        ["driver da GPU"] = c.DriverGpu ?? "", ["plano de energia"] = c.PlanoEnergia ?? "", ["HAGS"] = c.Hags?.ToString() ?? "", ["Modo de Jogo"] = c.ModoJogo?.ToString() ?? "",
+        ["VRR do Windows"] = c.VrrWindows?.ToString() ?? "", ["resolução/Hz do monitor"] = $"{c.Monitor?.Largura}x{c.Monitor?.Altura}@{c.Monitor?.HzAtual}",
+        ["velocidade da RAM"] = string.Join(",", c.Ram.Select(r => r.VelocidadeConfiguradaMts)),
+    };
 
     // ------------------------------------------------------------------ perfil manual
 
