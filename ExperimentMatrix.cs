@@ -106,11 +106,12 @@ public sealed class ExperimentMatrix
         S("um monitor", "desligue o segundo monitor (144 Hz) durante o jogo", "compositor com dois monitores");
         S("preferred cores off", "BIOS: Preferred Cores desligado (CPPC continua ligado). Salve um OC Profile antes", "agendamento de núcleos");
         S("c-states", "BIOS: Global C-State Control desligado e Power Supply Idle Control em Typical Current Idle. Esquenta mais em repouso", "latência de acordar núcleos");
+        S("pbo limites", "BIOS: PBO › Advanced com limites manuais PPT 120 W, TDC 80 A, EDC 120 A (mantendo Curve Optimizer -20 e boost +200). Salve um OC Profile antes", "teto de potência nos picos (o 5700X bateu 87 W de 88 W)");
         S("co -15", "Curve Optimizer -15 e boost +100 MHz", "clock stretching com -20");
         S("rebar", "Above 4G Decoding e Re-Size BAR ligados na BIOS", "ganho de GPU");
         S("dynamic tick", "Otimização › ligue \"Experimento: desligar o dynamic tick\" e reinicie", "timer do sistema");
         S("prioridade 0x26", "Otimização › ligue \"Experimento: prioridade do programa em primeiro plano\"", "agendamento do Windows");
-        S("ram 3600", "RAM a 3600 MT/s com timings ajustados, depois de 30 min de stress de RAM sem erro", "latência da RAM");
+        S("ram 3600", "BIOS: RAM a 3600 MT/s com FCLK 1800 (1:1), mesmos timings do XMP, DRAM 1,35 V e SoC ~1,1 V; valide com MemTest86 por 1 h sem erro e meça a latência na página Memória (hoje 84,8 ns)", "latência da RAM");
         S("uso real", "o melhor perfil até aqui, com os programas do dia a dia abertos (Discord em call, navegador)", "quantidade de RAM", "info");
         S("32gb", "2x16 GB (só se \"vale comprar?\" disser que sim)", "quantidade de RAM", "compra");
         S("5500x3d", "troca do processador (só se \"vale comprar?\" disser que sim)", "cache L3", "compra");
