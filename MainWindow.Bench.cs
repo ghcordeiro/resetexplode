@@ -69,6 +69,7 @@ public partial class MainWindow
         _captureArmed = false;
         _benchForce = true;
         StartSession(_armedPid);
+        _benchForce = false; // se a gravação não começou, o próximo jogo detectado não herda o modo benchmark
         BtnCapture.Content = _session != null ? "PARAR CAPTURA" : "CAPTURA CS2";
         return true;
     }

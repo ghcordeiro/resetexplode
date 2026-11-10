@@ -1,26 +1,21 @@
-RESET EXPLODE
-=============
+RESET EXPLODE · PC de CS2
+=========================
 
-Ferramenta de diagnóstico de hardware: informações do sistema, sensores, placa de vídeo,
-FPS estimado em jogos, detector de gargalo, overlay de FPS, RESET BENCH (benchmarks de CPU, GPU, memória e disco)
-RESET OTIMIZA (limpeza de memória e ajustes para jogos) e stress test de CPU / RAM / GPU.
+Ferramenta pessoal para medir e estabilizar o fps do CS2: sessões gravadas com laudo e sugestões, benchmark com perfis e ruído medido,
+otimizador do Windows para jogar (com restauração), overlay, gargalo, sensores, placa de vídeo, stress test e teste de memória.
 
 REQUISITOS
 - Windows 10 ou 11, 64 bits. Não precisa instalar o .NET (já vem dentro do .exe).
-- Para temperatura e consumo da CPU, instale o driver PawnIO (uma vez só):
-      winget install namazso.PawnIO
-- Aceite o pedido de administrador ao abrir (necessário para ler os sensores).
-- Se a temperatura/consumo da CPU não aparecerem, o menu lateral mostra o motivo e um
-  botão CORRIGIR, que instala o PawnIO com um clique. Depois feche e abra o programa.
-  Se instalou o PawnIO e mesmo assim não aparecer, reinicie o PC.
+- Para temperatura e consumo da CPU, instale o driver PawnIO (uma vez só):  winget install namazso.PawnIO
+- Aceite o pedido de administrador ao abrir (necessário para sensores e ajustes do Windows).
 
-COMO USAR
-- Abra o ResetExplode.exe. Na primeira vez ele demora alguns segundos para iniciar.
-- Se o Windows mostrar "O Windows protegeu o computador", clique em "Mais informações"
-  e depois em "Executar assim mesmo" (o programa não tem assinatura digital paga).
-- Overlay: Ctrl + Shift + O liga e desliga.
+COMO MEDIR
+1. Feche a FACEIT, o navegador e o Discord. Abra o CS2 com a opção -condebug (Biblioteca › opções de inicialização).
+2. Sessões › Benchmark CS2: escreva o nome do perfil (ex.: linha de base) e clique em CAPTURA CS2. Volte ao jogo, carregue o mapa de benchmark e rode.
+3. Repita 3 vezes por perfil (a primeira depois de abrir o jogo é aquecimento). Mude UMA coisa por perfil e use COMPARAR.
 
 OBSERVAÇÕES
-- Placas NVIDIA mostram mais detalhes (VBIOS, limites de energia, CUDA).
-- Configurações e histórico ficam em %AppData%\ResetExplode (não vão junto com o .exe).
-- Use os stress tests com o limite de temperatura ligado e boa ventilação.
+- O app nunca toca o processo do jogo (só ETW, sensores e arquivos). Só offline.
+- Configurações, sessões e backups ficam em %AppData%\ResetExplode.
+- Antes de APLICAR PC DE CS, o app cria um ponto de restauração. RESTAURAR ORIGINAIS desfaz os ajustes.
+- Overlay: Ctrl + Shift + O liga e desliga.

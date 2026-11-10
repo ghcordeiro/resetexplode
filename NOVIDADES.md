@@ -1,54 +1,32 @@
-## Novidades da v0.16
+## PC de CS2 (branch `pc-de-cs2`)
 
-**Nova página · RESET FERRAMENTAS › Inicialização**
-- Lista os programas que abrem junto com o Windows: chaves Run do registro (usuário, todos os usuários, 32 e 64 bits)
-  e pastas Inicializar, com descrição, fabricante e aviso quando o arquivo do programa não existe mais.
-- Interruptor para ativar/desativar, igual ao Gerenciador de Tarefas: a entrada continua lá e pode ser religada.
-- Botão **REMOVER** com confirmação; o programa continua instalado e tudo pode ser desfeito em **Restaurar removidos**.
+Versão pessoal do RESET EXPLODE, só para CS2 neste PC. Mede a estabilidade do fps, aponta o gargalo, deixa o Windows dedicado ao jogo e perdeu tudo que não servia a isso.
 
-**Nova página · RESET FERRAMENTAS › Instalar apps**
-- Os essenciais depois de formatar o PC: Steam, Google Chrome, Discord, Lightshot, 7-Zip, WinRAR e VLC.
-- Instala pelo winget (instalador de pacotes da Microsoft que já vem no Windows): versão oficial mais recente,
-  sem janelas, um app de cada vez, com o resultado de cada um na lista.
-- Mostra o que já está instalado; se o winget ainda não existir (PC recém-formatado), um botão abre a Microsoft Store
-  para atualizar o "Instalador de Aplicativo".
+**Sessões › Benchmark CS2**
+- **Perfil de teste** (ex.: "linha de base", "fps_max 240"): cada captura é gravada com o nome do perfil e nunca é apagada pela limpeza de espaço.
+- **CAPTURA CS2**: fica armada e começa quando o CS2 está em primeiro plano. Termina no tempo escolhido ou quando o mapa de benchmark imprime
+  `[VProf] FPS: Avg=…, P1=…` no `console.log` (abra o jogo com `-condebug`, preset na Biblioteca). Se o 1% low calculado difere mais de 5% do P1 do mapa, avisa.
+- Recusa começar com o **FACEIT** aberto (só offline) e marca a execução como inválida se houver alt-tab, mudança de configuração ou poucos quadros.
+- **COMPARAR**: mediana e faixa (mín–máx) de cada perfil e veredito: só é "melhor" ou "pior" quando a diferença supera a variação entre execuções repetidas
+  da mesma configuração; senão, "dentro do ruído". Mínimo de 3 execuções válidas. **RELATÓRIO HTML** com gráficos, diferença de configuração e sugestões.
+- Métricas novas: desvio padrão do frametime, **quedas** (frame acima de 2,5x a mediana do último segundo, sem piso de 33 ms) e regularidade das quedas.
+- Snapshot ampliado: BIOS, VBS/Integridade de Memória, Secure Boot, TPM, versão do CS2, vídeo do CS2, `fps_max`, perfil NVIDIA, todos os monitores e programas abertos.
+  **PERFIL MANUAL (BIOS)** guarda PBO, Curve Optimizer, timings e tensões, que o Windows não lê.
+- **Sugestões** no laudo com a evidência medida: limite de CPU em poucos threads, memória cheia, latência da RAM, quedas periódicas (BIOS/fTPM), fps sem limite,
+  clock que cai sem calor (Curve Optimizer), segundo monitor em outra taxa e programa em segundo plano.
+- **Alt-tab**: mede quanto o jogo leva para voltar ao ritmo normal. No Launcher, a opção de trocar a área de trabalho do monitor principal para 1280x960 enquanto o
+  jogo roda (janela sem borda sem trocar o modo do monitor); o modo original volta ao fechar o jogo ou na próxima abertura do app.
+- **Diagnóstico profundo** (DPC/ISR do kernel): aponta o driver que atrasa o sistema. Pesa no jogo; fica fora das comparações.
+- **Vídeo do CS2 (teste)**: grava opções de vídeo com backup e restaura. Nunca altera resolução, proporção, taxa nem monitor.
 
-**Nova categoria · RESET MAKER** (Arduino, ESP32 e conversores USB-serial)
-- **Portas COM**: a limpeza de dispositivos fantasmas e de números COM presos saiu de Otimização e ganhou página própria.
-- **Drivers seriais**: diagnóstico das placas com CH340/CH341, CP2102/CP210x, FTDI, Prolific PL2303 e Arduino
-  (sem driver, código 10, código 43, FTDI falsificado travado em PID 0000), com a orientação de cada caso.
-- **REINSTALAR** remove o dispositivo e faz o Windows detectar de novo com o melhor driver.
-- Lista as versões de driver guardadas no Windows para cada chip, com **REMOVER** (backup antes): volta para uma versão
-  anterior quando a nova não funciona com clones, ou desinstala de vez. **Restaurar removidos** desfaz.
-- **Drivers incluídos no app**: CH340 4.0, CP210x 11.6, FTDI 2.12.36.20 e Arduino, oficiais e assinados, instalam sem internet
-  (ideal logo depois de formatar), com a placa conectada ou não. Também abre a página oficial de cada fabricante.
-- **Arduino IDE**: instalar/atualizar pelo winget, fechar programas que prendem a porta COM e limpar o cache de índices
-  quando a IDE trava em "Downloading index".
+**RESET OTIMIZA › PC de CS**
+- **APLICAR PC DE CS**: cria um ponto de restauração e liga os ajustes seguros: serviços que o CS não usa (impressão, telemetria, Xbox, mapas, Bluetooth…),
+  placa de rede sem economia de energia, Windows Update com horário ativo máximo e sem reinício com você logado, Widgets/Copilot/dicas desligados,
+  efeitos visuais, núcleos da CPU sem estacionamento, tarefas de telemetria e inicialização só com o essencial (Steam, Discord, Razer, áudio, NVIDIA, FACEIT).
+  O valor original de cada item é gravado antes da mudança; **RESTAURAR ORIGINAIS** desfaz.
+- **PREPARAR PARA JOGAR**: fecha o que não está na lista permitida e limpa a memória em espera.
+- Saíram os ajustes que reduziam a segurança (VBS, Spectre/Meltdown, exclusões do Defender): o FACEIT exige VBS, TPM e Secure Boot.
+- **Perfil NVIDIA do cs2.exe**: além de limite de fps e baixa latência, modo de energia e V-Sync (só grava depois de o driver confirmar o nome da configuração).
 
-**Novo benchmark · Ray tracing (GPU)**
-- Teste em Direct3D 12 com DXR 1.1 que usa os núcleos de ray tracing (RTX 20+, Radeon RX 6000+, Intel Arc): 4 mil objetos,
-  reflexos de reflexos, sombras suaves, oclusão de ambiente e iluminação indireta, com a cena refeita a cada frame.
-- Feito para comparar com confiança: aquecimento sem medir, 3 passadas iguais, nota pela mediana e variação entre passadas
-  (selo de "resultado confiável" abaixo de 3%); tempo de frame medido pelo relógio da própria GPU.
-- Presets Normal, Alta e Extrema em 1080p, 1440p e 4K; histórico comparando só resultados do mesmo preset e resolução.
-- Referência: RX 9070, Alta 1440p = 878 pts (87,8 FPS), variação 0,5%.
-
-**Overlay personalizável**
-- Na aba Overlay, escolha o que aparece: FPS, frametime, 1% low, gráfico; GPU (uso, temperatura, hotspot, clock do núcleo,
-  clock da memória, consumo, tensão, ventoinha, limitador NVIDIA); VRAM (usada, %, temperatura); CPU (uso, núcleo mais
-  ocupado, temperatura, clock médio, clock máximo, consumo); RAM (GB, %); nome do jogo e hora. Atalhos SÓ FPS, PADRÃO e TUDO.
-- Cada componente vira uma linha só com os itens escolhidos; a escolha fica salva e vale na hora.
-
-**RESET JOGOS**
-- Novo atalho em Extras: **-allow_third_party_software** (CS2), que libera captura de jogo do OBS, ReShade e overlays
-  bloqueados pelo modo confiável; o aviso sobre o Fator de Confiança aparece ao passar o mouse.
-
-**Abertura mais rápida**
-- A janela aparece em ~0,5 s (antes ~4,6 s). Informações do sistema, sensores e placa de vídeo carregam em paralelo,
-  em segundo plano, e cada página é preenchida quando a sua parte fica pronta.
-- O aviso "sem sensor da CPU" não aparece mais por engano enquanto o hardware ainda está sendo detectado.
-
-**Correção · Overlay de jogos**
-- O overlay agora fica por cima de jogos em janela sem borda que também se marcam como "sempre no topo"
-  (ex.: GTA V e Cyberpunk 2077), inclusive depois de Alt+Tab.
-- Aparece no monitor onde o jogo está, não só no monitor principal.
+**Removido**: RESET MAKER (Arduino/portas COM/drivers seriais/atraso), Integração (luzes), Instalar apps, FPS estimado, Energia/bateria, benchmarks sintéticos
+(render, cena de GPU, ray tracing, simulação, disco), teste de refrigeração e aviso de dispositivos USB. Fica o teste de **Memória** (latência, banda e carregamento).
