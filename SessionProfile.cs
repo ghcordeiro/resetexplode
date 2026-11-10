@@ -6,7 +6,8 @@ namespace ResetExplode;
 
 /// <summary>Uma execução de um perfil de teste, lida da pasta da sessão.</summary>
 public sealed record RunRecord(string Folder, bool Valid, bool WarmUp, double Low1Fps, double Low01Fps, double AvgFps,
-                               double StdDevMs, int Drops, double AltTabMs, string? Invalid);
+                               double StdDevMs, int Drops, double AltTabMs, string? Invalid,
+                               double DisplayLatMs = 0, double PcLatMs = 0, double ClickLatMs = 0);
 
 /// <summary>
 /// Perfil de teste ("linha de base", "fps_max 240"...): o nome é gravado em perfil.txt assim que a sessão começa
@@ -77,11 +78,17 @@ public static class SessionProfile
                 double D(string k) => r.TryGetProperty(k, out var e) && e.ValueKind == JsonValueKind.Number ? e.GetDouble() : 0;
                 bool B(string k, bool def) => r.TryGetProperty(k, out var e) && e.ValueKind is JsonValueKind.True or JsonValueKind.False ? e.GetBoolean() : def;
                 string? reason = r.TryGetProperty("motivo_invalida", out var m) && m.ValueKind == JsonValueKind.String ? m.GetString() : null;
+                // Latências do PresentMon (0 = sem dado): até a tela, do PC (entrada → tela) e clique até a imagem.
+                double N(JsonElement o, string k) => o.ValueKind == JsonValueKind.Object && o.TryGetProperty(k, out var e) && e.ValueKind == JsonValueKind.Number ? e.GetDouble() : 0;
+                var ex = r.TryGetProperty("exibicao", out var exv) ? exv : default;
+                double dispLat = ex.ValueKind == JsonValueKind.Object && ex.TryGetProperty("latencia_exibicao_ms", out var le) ? N(le, "media") : 0;
+                double pcLat = N(ex, "latencia_pc_ms_media");
+                double clickLat = N(ex, "latencia_clique_amostras") >= 5 ? N(ex, "latencia_clique_ms_media") : 0;
                 if (B("profundo", false)) continue; // diagnóstico profundo pesa no jogo: fica fora de toda comparação
                 bool valid = B("valida", true) && D("frames") > 0;
                 if (D("frames") <= 0) reason ??= "sem quadros";
                 list.Add((when, new RunRecord(dir, valid, B("aquecimento", false), D("low_1pct_fps"), D("low_01pct_fps"), D("fps_medio"),
-                    D("desvio_padrao_ms"), (int)D("quedas"), D("alttab_mediana_ms"), valid ? null : reason)));
+                    D("desvio_padrao_ms"), (int)D("quedas"), D("alttab_mediana_ms"), valid ? null : reason, dispLat, pcLat, clickLat)));
             }
             catch { list.Add((when, new RunRecord(dir, false, false, 0, 0, 0, 0, 0, 0, "resumo ilegível"))); }
         }

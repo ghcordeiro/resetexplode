@@ -70,6 +70,15 @@ public static class ProfileComparer
             Compare("Desvio do frametime (ms)", P(a, r => r.StdDevMs), P(b, r => r.StdDevMs), false),
             Compare("Quedas", P(a, r => r.Drops), P(b, r => r.Drops), false),
         };
+        // Latência: só entra quando os dois perfis têm o dado (o PresentMon pode não medir, ex.: sem Reflex não há "latência do PC").
+        void Lat(string name, Func<RunRecord, double> f)
+        {
+            var la = a.Select(f).Where(x => x > 0).ToList(); var lb = b.Select(f).Where(x => x > 0).ToList();
+            if (la.Count > 0 && lb.Count > 0) rows.Add(Compare(name, la, lb, false));
+        }
+        Lat("Latência até a tela (ms)", r => r.DisplayLatMs);
+        Lat("Latência do PC (ms)", r => r.PcLatMs);
+        Lat("Clique até a imagem (ms)", r => r.ClickLatMs);
         // Alt-tab só entra se as execuções tiveram alt-tab medido (a captura válida normalmente não tem: serve às gravações do dia a dia).
         var altA = a.Where(r => r.AltTabMs > 0).Select(r => r.AltTabMs).ToList();
         var altB = b.Where(r => r.AltTabMs > 0).Select(r => r.AltTabMs).ToList();

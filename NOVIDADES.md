@@ -19,6 +19,7 @@ Versão pessoal do RESET EXPLODE, só para CS2 neste PC. Mede a estabilidade do 
 - Recusa começar com o **FACEIT** aberto (só offline) e marca a execução como inválida se houver alt-tab, mudança de configuração ou poucos quadros.
 - **COMPARAR**: mediana e faixa (mín–máx) de cada perfil e veredito: só é "melhor" ou "pior" quando a diferença supera a variação entre execuções repetidas
   da mesma configuração; senão, "dentro do ruído". Mínimo de 3 execuções válidas. **RELATÓRIO HTML** com gráficos, diferença de configuração e sugestões.
+- **Latência na comparação**: até a tela, do PC e clique até a imagem (PresentMon), com o mesmo veredito pelo ruído. Decide `fps_max` × G-Sync + Reflex.
 - Métricas novas: desvio padrão do frametime, **quedas** (frame acima de 2,5x a mediana do último segundo, sem piso de 33 ms) e regularidade das quedas.
 - Snapshot ampliado: BIOS, VBS/Integridade de Memória, Secure Boot, TPM, versão do CS2, vídeo do CS2, `fps_max`, perfil NVIDIA, todos os monitores e programas abertos.
   **PERFIL MANUAL (BIOS)** guarda PBO, Curve Optimizer, timings e tensões, que o Windows não lê.
