@@ -236,7 +236,7 @@ public partial class MainWindow
         if (report != null && report.Frames > 0)
         {
             extra["frames_captura_total"] = s.FrameCount;
-            covered = s.TrimToLast(report.Frames);
+            covered = s.TrimToWindow(report.Frames, report.EndTime);
             extra["janela_quadros"] = report.Frames;
             extra["vprof"] = new
             {
@@ -498,9 +498,10 @@ public partial class MainWindow
     private void BtnMatrixAdopt_Click(object sender, RoutedEventArgs e)
     {
         var m = ExperimentMatrix.Load();
-        var cand = SessionProfile.AllProfiles().Where(p => p.StartsWith("ruido-", StringComparison.OrdinalIgnoreCase) || p.Equals("linha de base", StringComparison.OrdinalIgnoreCase))
-            .FirstOrDefault(p => SessionProfile.Runs(p).Count(r => r.Valid && !r.WarmUp) >= ProfileComparer.MinRuns);
-        if (cand == null) { CsBenchStatus.Text = "Nenhum perfil de ruído ou de linha de base com 3 execuções válidas ainda."; return; }
+        bool Enough(string p) => SessionProfile.Runs(p).Count(r => r.Valid && !r.WarmUp) >= ProfileComparer.MinRuns;
+        string? typed = SessionProfile.Normalize(SessProfile.Text);
+        string? cand = typed != null && Enough(typed) ? typed : SessionProfile.AllProfiles().FirstOrDefault(Enough);
+        if (cand == null) { CsBenchStatus.Text = "Nenhum teste com 3 execuções válidas ainda."; return; }
         m.AdoptBaseline(cand);
         RefreshMatrix();
         CsBenchStatus.Text = $"\"{cand}\" virou a linha de base. Clique em USAR O PRÓXIMO PASSO.";

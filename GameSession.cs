@@ -139,6 +139,30 @@ public sealed class GameSession : IDisposable
         return true;
     }
 
+    /// <summary>
+    /// Fica só com os <paramref name="n"/> frames que terminam em <paramref name="end"/> (a hora do relatório do mapa no console.log): a captura continua
+    /// por alguns segundos depois do fim da passada, e esses frames extras não fazem parte da janela que o mapa analisou.
+    /// Sem hora, ou com a hora fora da captura, usa os últimos <paramref name="n"/>. <c>false</c> se a captura tem menos frames que isso.
+    /// </summary>
+    public bool TrimToWindow(int n, DateTime? end)
+    {
+        if (n <= 0 || _frameTimes.Count < n) return false;
+        int endIdx = _frameTimes.Count;
+        if (end is DateTime e)
+        {
+            double target = (e - Start).TotalMilliseconds, acc = 0;
+            for (int i = 0; i < _frameTimes.Count; i++)
+            {
+                acc += _frameTimes[i];
+                if (acc >= target) { endIdx = i + 1; break; }
+            }
+            if (endIdx < n) endIdx = _frameTimes.Count; // hora incoerente com a captura: não arrisca
+        }
+        if (endIdx < _frameTimes.Count) _frameTimes.RemoveRange(endIdx, _frameTimes.Count - endIdx);
+        if (_frameTimes.Count > n) _frameTimes.RemoveRange(0, _frameTimes.Count - n);
+        return true;
+    }
+
     /// <summary>Resumo dos frames até agora (sem fechar a sessão).</summary>
     public FrameSummary Preview() => Summarize(_frameTimes);
 

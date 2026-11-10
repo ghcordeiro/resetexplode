@@ -24,7 +24,18 @@ public static class VProfLog
     }
 
     public sealed record VProfRow(string Name, double AllAvg, double AllP99, int ActiveN, double ActiveAvg, double ActiveP99, double MaxP50, double MaxP95);
-    public sealed record VProfReport(int Frames, int Intervals, int Excluded, double? Avg, double? P1, List<VProfRow> Rows);
+    public sealed record VProfReport(int Frames, int Intervals, int Excluded, double? Avg, double? P1, List<VProfRow> Rows, DateTime? EndTime = null);
+
+    private static readonly Regex Stamp = new(@"^\s*(\d{1,2})/(\d{1,2})\s+(\d{1,2}):(\d{2}):(\d{2})\b", RegexOptions.Compiled);
+
+    /// <summary>Hora que o console.log põe no começo de cada linha ("11/10 06:25:41 [VProf] ..." = mês/dia). <c>null</c> se a linha não tem.</summary>
+    public static DateTime? TryParseStamp(string line)
+    {
+        var m = Stamp.Match(line);
+        if (!m.Success) return null;
+        try { return new DateTime(DateTime.Now.Year, int.Parse(m.Groups[1].Value), int.Parse(m.Groups[2].Value), int.Parse(m.Groups[3].Value), int.Parse(m.Groups[4].Value), int.Parse(m.Groups[5].Value)); }
+        catch { return null; }
+    }
 
     private static readonly Regex SummaryFrames = new(@"Summary of\s+(\d+)\s+frames and\s+(\d+)\s+1-second intervals\.?\s*(?:\((\d+)\s+frames excluded)?", RegexOptions.IgnoreCase | RegexOptions.Compiled);
     private static readonly Regex Row = new(@"^\s*(?:\[VProf\])?\s*([A-Za-z_][A-Za-z_ ]*?)\s+(-?\d+(?:[.,]\d+)?)\s+(-?\d+(?:[.,]\d+)?)\s+(\d+)\s+(-?\d+(?:[.,]\d+)?)\s+(-?\d+(?:[.,]\d+)?)\s+(-?\d+(?:[.,]\d+)?)\s+(-?\d+(?:[.,]\d+)?)\s+(\d+)\s+(-?\d+(?:[.,]\d+)?)\s+(-?\d+(?:[.,]\d+)?)\s*$", RegexOptions.Compiled);
@@ -35,7 +46,7 @@ public static class VProfLog
     /// </summary>
     public static VProfReport? ParseReport(IEnumerable<string> lines)
     {
-        int frames = 0, intervals = 0, excluded = 0; double? avg = null, p1 = null; bool seen = false;
+        int frames = 0, intervals = 0, excluded = 0; double? avg = null, p1 = null; bool seen = false; DateTime? end = null;
         var rows = new List<VProfRow>();
         static double N(string s) => double.Parse(s.Replace(',', '.'), CultureInfo.InvariantCulture);
         foreach (var line in lines)
@@ -44,6 +55,7 @@ public static class VProfLog
             if (m.Success)
             {
                 seen = true; frames = int.Parse(m.Groups[1].Value); intervals = int.Parse(m.Groups[2].Value);
+                end = TryParseStamp(line) ?? end;
                 excluded = m.Groups[3].Success ? int.Parse(m.Groups[3].Value) : 0;
                 continue;
             }
@@ -53,7 +65,7 @@ public static class VProfLog
                 rows.Add(new VProfRow(r.Groups[1].Value.Trim(), N(r.Groups[2].Value), N(r.Groups[3].Value), int.Parse(r.Groups[4].Value), N(r.Groups[5].Value),
                                       N(r.Groups[6].Value), N(r.Groups[7].Value), N(r.Groups[8].Value)));
         }
-        return seen ? new VProfReport(frames, intervals, excluded, avg, p1, rows) : null;
+        return seen ? new VProfReport(frames, intervals, excluded, avg, p1, rows, end) : null;
     }
 
     /// <summary>console.log a partir do cs2.exe (…\game\bin\win64\cs2.exe → …\game\csgo\console.log).</summary>

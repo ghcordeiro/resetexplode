@@ -92,6 +92,8 @@ public sealed class ExperimentMatrix
         m.Steps[^1].Result = "a BIOS 2.O0 (mai/2026) já tem AGESA bem acima do 1.2.0.7 que corrigiu o fTPM";
         S("fps_max 240", "fps_max 240 (opções de inicialização ou autoexec)", "fps sem limite");
         S("gsync reflex", "G-Sync + V-Sync no driver (Biblioteca › NVIDIA) + Reflex no jogo, sem fps_max", "fps sem limite");
+        S("opcoes minimas", "opções de inicialização do CS2: tire -high, -novid e -nojoy (deixe só -fullscreen e -condebug). A Valve diz que a melhor opção é nenhuma", "opções que atrapalham");
+        S("nvidia energia max", "Biblioteca › NVIDIA: marque \"Gerenciamento de energia: preferir desempenho máximo\" e aplique no driver", "clock da GPU na hora do pico");
         S("timer global", "Otimização › ligue \"Experimento: timer global do Windows 11\" e reinicie", "timer do sistema");
         S("mpo off", "Otimização › ligue \"Experimento: Multiplane Overlay (MPO) desligado\" e reinicie", "dois monitores e overlay");
         S("rede moderacao", "Otimização › ligue \"Experimento: moderação de interrupções da placa de rede\" e reinicie (ou desative e ative o adaptador)", "latência da rede");

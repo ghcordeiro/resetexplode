@@ -1326,8 +1326,8 @@
                                 <TextBlock x:Name="MatrixNext" TextWrapping="Wrap" FontWeight="SemiBold" Margin="0,0,0,8"/>
                                 <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
                                     <Button Style="{StaticResource PrimaryButton}" Content="USAR O PRÓXIMO PASSO" Padding="14,7" Margin="0,0,8,0" Click="BtnMatrixUse_Click"/>
-                                    <Button Style="{StaticResource OutlineButton}" Content="USAR TESTE DE RUÍDO COMO BASE" Padding="14,7" Margin="0,0,8,0" Click="BtnMatrixAdopt_Click"
-                                            ToolTip="Se você já fez o TESTE DE RUÍDO (5 capturas da mesma configuração), ele vale como linha de base."/>
+                                    <Button Style="{StaticResource OutlineButton}" Content="USAR ESTE TESTE COMO BASE" Padding="14,7" Margin="0,0,8,0" Click="BtnMatrixAdopt_Click"
+                                            ToolTip="O teste escrito no campo de nome (ou o mais recente com 3 execuções válidas) vira a linha de base da matriz."/>
                                     <Button Style="{StaticResource OutlineButton}" Content="PULAR" Padding="14,7" Margin="0,0,8,0" Click="BtnMatrixSkip_Click"/>
                                     <Button Style="{StaticResource OutlineButton}" Content="REVERTER" Padding="14,7" Margin="0,0,8,0" Click="BtnMatrixRevert_Click"
                                             ToolTip="Volta as opções de vídeo do último passo que perdeu ou ficou dentro do ruído."/>

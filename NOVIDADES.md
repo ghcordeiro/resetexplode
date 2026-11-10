@@ -25,6 +25,7 @@ Versão pessoal do RESET EXPLODE, só para CS2 neste PC. Mede a estabilidade do 
   limpa a RAM, para SysMain/Windows Search/Spooler/Windows Update, sobe a prioridade e liga o Alto desempenho; desfaz tudo quando o jogo fecha.
 - **Quedas por evento**: o laudo lista as maiores quedas com o instante, o número do quadro e o pior frame; a comparação mostra as quedas que se repetem no mesmo instante
   em quase todas as execuções (eventos da cena, como a explosão da C4 do mapa), separadas das travadas aleatórias.
+- A janela do mapa agora termina na **hora do relatório no console.log** (a captura roda uns 4 s depois do fim da passada; esses frames extras deslocavam o 1% low em ~15%).
 - **Tabela do mapa de benchmark** (`[VProf]`): a captura lê o relatório inteiro (janela de frames, tabela por sistema), guarda em `vprof.txt` e alinha o 1% low à janela
   que o mapa analisou (os últimos N frames; o resto é aquecimento), para bater com o P1 do mapa. O laudo mostra o custo do servidor local do mapa e do Reflex.
 - **Causa de cada queda**: frame a frame pelo PresentMon, cada queda vira CPU, GPU ou "espera do sistema" (driver, interrupção, paginação);
