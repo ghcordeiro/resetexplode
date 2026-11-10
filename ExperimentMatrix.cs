@@ -57,6 +57,11 @@ public sealed class ExperimentMatrix
     {
         var def = Default().Steps;
         bool changed = false;
+        // O passo da BIOS foi descartado pelos dados (a BIOS instalada já é recente): matrizes antigas pulam ele sozinhas.
+        if (Steps.FirstOrDefault(x => x.Profile == "bios atualizada" && x.Status == "pendente") is { } bios)
+        {
+            bios.Status = "pulado"; bios.Result = def.FirstOrDefault(x => x.Profile == "bios atualizada")?.Result; changed = true;
+        }
         for (int i = 1; i < def.Count; i++)
         {
             if (Steps.Any(x => x.Profile.Equals(def[i].Profile, StringComparison.OrdinalIgnoreCase))) continue;
@@ -83,6 +88,8 @@ public sealed class ExperimentMatrix
             m.Steps.Add(new MatrixStep { Order = m.Steps.Count, Profile = profile, Change = change, Hypothesis = why, Kind = kind });
         S("linha de base", "nada: a configuração de hoje (PBO + CO -20, XMP 3200, fps livre)", "referência", "base");
         S("bios atualizada", "BIOS/AGESA mais recente, mesmas configurações (salve um OC Profile antes)", "stutter do fTPM");
+        m.Steps[^1].Status = "pulado";
+        m.Steps[^1].Result = "a BIOS 2.O0 (mai/2026) já tem AGESA bem acima do 1.2.0.7 que corrigiu o fTPM";
         S("fps_max 240", "fps_max 240 (opções de inicialização ou autoexec)", "fps sem limite");
         S("gsync reflex", "G-Sync + V-Sync no driver (Biblioteca › NVIDIA) + Reflex no jogo, sem fps_max", "fps sem limite");
         S("timer global", "Otimização › ligue \"Experimento: timer global do Windows 11\" e reinicie", "timer do sistema");
@@ -155,6 +162,22 @@ public sealed class ExperimentMatrix
         foreach (var x in Steps.OrderBy(x => x.Kind == "compra" ? 1 : 0).ThenBy(x => x.Order)) x.Order = order++;
         Steps = Steps.OrderBy(x => x.Order).ToList();
         return added;
+    }
+
+    /// <summary>Usa um perfil já medido (ex.: o teste de ruído) como linha de base. Exige 3 ou mais execuções válidas.</summary>
+    public bool AdoptBaseline(string profile)
+    {
+        var runs = SessionProfile.Runs(profile).Where(r => r.Valid && !r.WarmUp).ToList();
+        if (runs.Count < ProfileComparer.MinRuns) return false;
+        BaselineProfile = profile;
+        var step = Steps.FirstOrDefault(x => x.Kind == "base");
+        if (step != null)
+        {
+            step.Status = "base";
+            step.Result = $"1% low {ProfileComparer.Summarize("", runs.Select(r => r.Low1Fps)).Median:0} fps (de \"{profile}\")";
+        }
+        Save();
+        return true;
     }
 
     public MatrixStep? Current => Steps.Where(s => s.Open && s.Kind != "compra").OrderBy(s => s.Order).FirstOrDefault();

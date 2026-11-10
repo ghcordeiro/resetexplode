@@ -112,6 +112,12 @@ public partial class MainWindow
                 : $"variação do 1% low de {noise.RangePct:0.#}% (desvio {noise.CvPct:0.#}%): " +
                   (noise.Reliable ? "o benchmark é confiável para comparar." : "acima de 5%: aumente a duração, reinicie o PC antes e mantenha as condições iguais.");
             CsBenchStatus.Text = $"Série \"{profile}\" terminou: {done} de {_seriesTarget} válidas. " + verdict;
+            if (_seriesIsNoise && noise.Reliable)
+            {
+                var mx = ExperimentMatrix.Load();
+                if (mx.BaselineProfile == null && mx.AdoptBaseline(profile)) CsBenchStatus.Text += " Ele virou a linha de base da matriz: pode ir direto ao próximo passo.";
+                RefreshMatrix();
+            }
             _seriesProfile = null;
             if (_seriesIsNoise) ErrorReporter.Log($"teste de ruído: {verdict}");
             return;
@@ -481,6 +487,19 @@ public partial class MainWindow
         if (string.IsNullOrWhiteSpace(TxtBenchRepeat.Text)) TxtBenchRepeat.Text = ProfileComparer.MinRuns.ToString();
         CsBenchStatus.Text = $"Perfil \"{c.Profile}\" pronto. Faça a mudança ({c.Change}), abra o mapa e clique em CAPTURA CS2.";
     }
+
+    private void BtnMatrixAdopt_Click(object sender, RoutedEventArgs e)
+    {
+        var m = ExperimentMatrix.Load();
+        var cand = SessionProfile.AllProfiles().Where(p => p.StartsWith("ruido-", StringComparison.OrdinalIgnoreCase) || p.Equals("linha de base", StringComparison.OrdinalIgnoreCase))
+            .FirstOrDefault(p => SessionProfile.Runs(p).Count(r => r.Valid && !r.WarmUp) >= ProfileComparer.MinRuns);
+        if (cand == null) { CsBenchStatus.Text = "Nenhum perfil de ruído ou de linha de base com 3 execuções válidas ainda."; return; }
+        m.AdoptBaseline(cand);
+        RefreshMatrix();
+        CsBenchStatus.Text = $"\"{cand}\" virou a linha de base. Clique em USAR O PRÓXIMO PASSO.";
+    }
+
+    private void ChkMatrixAll_Click(object sender, RoutedEventArgs e) => MatrixList.Visibility = ChkMatrixAll.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
 
     private void BtnMatrixSkip_Click(object sender, RoutedEventArgs e)
     {
