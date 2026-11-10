@@ -6,6 +6,7 @@ name: Compilar
 on:
   push:
     branches-ignore: [main]
+    paths-ignore: ['docs/**', '**.md']  # só documentação: não gera build nem pede atualização no app
   workflow_dispatch:
 
 permissions:
