@@ -122,9 +122,18 @@ public static class SystemTimers
         Restore = RestoreDynamicTick,
     };
 
+    /// <summary>Sem original guardado (o ajuste já estava ligado antes do app, por outro script), volta ao padrão do Windows: valor ausente.</summary>
     private static void RestoreDynamicTick(AppSettings s)
     {
-        if (s.TweakBackup.GetValueOrDefault("exp.dynamictick") == "<ausente>") Run("bcdedit.exe", "/deletevalue {current} disabledynamictick");
+        if (s.TweakBackup.GetValueOrDefault("exp.dynamictick") != "presente") Run("bcdedit.exe", "/deletevalue {current} disabledynamictick");
+    }
+
+    /// <summary>Volta ao valor de antes do app; sem backup, ao padrão do Windows (2).</summary>
+    private static void RestorePrio(AppSettings s)
+    {
+        if (s.TweakBackup.ContainsKey("exp.prio")) { WindowsTweaks.RestoreDword(s, "exp.prio", Registry.LocalMachine, PrioPath, "Win32PrioritySeparation"); return; }
+        using var k = Registry.LocalMachine.CreateSubKey(PrioPath);
+        k.SetValue("Win32PrioritySeparation", 2, RegistryValueKind.DWord);
     }
 
     public static Tweak PrioritySeparation() => new()
@@ -136,9 +145,9 @@ public static class SystemTimers
         Write = (on, s) =>
         {
             if (on) WindowsTweaks.SetDword(s, "exp.prio", Registry.LocalMachine, PrioPath, "Win32PrioritySeparation", 0x26);
-            else WindowsTweaks.RestoreDword(s, "exp.prio", Registry.LocalMachine, PrioPath, "Win32PrioritySeparation");
+            else RestorePrio(s);
         },
-        Restore = s => WindowsTweaks.RestoreDword(s, "exp.prio", Registry.LocalMachine, PrioPath, "Win32PrioritySeparation"),
+        Restore = RestorePrio,
     };
 
     private static int? ReadDword(string path, string name) => WindowsTweaks.ReadDword(Registry.LocalMachine, path, name);
