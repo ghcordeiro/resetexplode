@@ -36,6 +36,22 @@ public sealed class SessionContext
     public TesteEntrada? EntradaMedida { get; set; }
     /// <summary>Último teste de atraso com o testador (Arduino ou câmera), se houver.</summary>
     public LatencyRecord? LatenciaMedida { get; set; }
+    // ---- snapshot ampliado (benchmark CS2) ----
+    public string? BiosVersao { get; set; }
+    public string? BiosData { get; set; }
+    public string? PlacaMae { get; set; }
+    public bool? Vbs { get; set; }
+    public bool? Hvci { get; set; }
+    public bool? SecureBoot { get; set; }
+    public string? Tpm { get; set; }
+    public string? Cs2Build { get; set; }
+    public Dictionary<string, string>? Cs2Video { get; set; }
+    public string? Cs2FpsMax { get; set; }
+    public string? Cs2OpcoesInicio { get; set; }
+    public string? PerfilNvidia { get; set; }
+    /// <summary>Todos os monitores ligados: nome do dispositivo, resolução, Hz e se é o principal.</summary>
+    public List<string> Monitores { get; set; } = new();
+    public List<string> ProgramasAbertos { get; set; } = new();
     public List<string> ErrosColeta { get; set; } = new();
 
     public sealed class ModuloRam

@@ -325,6 +325,25 @@ public static class SessionAnalyzer
             Diff(changes, "afinidade de núcleos", ca.Afinidade, cb.Afinidade);
             Diff(changes, "HAGS", ca.Hags?.ToString(), cb.Hags?.ToString());
             Diff(changes, "Resizable BAR", ca.ResizableBar?.ToString(), cb.ResizableBar?.ToString());
+            Diff(changes, "BIOS", ca.BiosVersao, cb.BiosVersao);
+            Diff(changes, "VBS", ca.Vbs?.ToString(), cb.Vbs?.ToString());
+            Diff(changes, "Integridade de Memória", ca.Hvci?.ToString(), cb.Hvci?.ToString());
+            Diff(changes, "Secure Boot", ca.SecureBoot?.ToString(), cb.SecureBoot?.ToString());
+            Diff(changes, "versão do CS2", ca.Cs2Build, cb.Cs2Build);
+            Diff(changes, "fps_max", ca.Cs2FpsMax, cb.Cs2FpsMax);
+            Diff(changes, "opções de inicialização do CS2", ca.Cs2OpcoesInicio, cb.Cs2OpcoesInicio);
+            Diff(changes, "perfil NVIDIA do CS2", ca.PerfilNvidia, cb.PerfilNvidia);
+            Diff(changes, "monitores", string.Join(" + ", ca.Monitores), string.Join(" + ", cb.Monitores));
+            if (ca.Cs2Video != null && cb.Cs2Video != null)
+                foreach (var k in ca.Cs2Video.Keys.Union(cb.Cs2Video.Keys, StringComparer.OrdinalIgnoreCase).OrderBy(x => x))
+                    Diff(changes, "vídeo " + k.Replace("setting.", ""), ca.Cs2Video.GetValueOrDefault(k), cb.Cs2Video.GetValueOrDefault(k));
+            var openA = ca.ProgramasAbertos.ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var openB = cb.ProgramasAbertos.ToHashSet(StringComparer.OrdinalIgnoreCase);
+            if (ca.ProgramasAbertos.Count > 0 && cb.ProgramasAbertos.Count > 0)
+            {
+                foreach (var n in openB.Except(openA)) changes.Add($"programa aberto a mais: {n}");
+                foreach (var n in openA.Except(openB)) changes.Add($"programa fechado: {n}");
+            }
         }
         return changes;
     }

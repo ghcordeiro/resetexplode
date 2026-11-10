@@ -32,7 +32,94 @@ public static class SessionContextCollector
         Try(c, "modo_jogo", () => c.ModoJogo = (RegDword(Registry.CurrentUser, @"Software\Microsoft\GameBar", "AutoGameModeEnabled") ?? 1) == 1);
         Try(c, "ajustes", () => c.AjustesLigados = tweaksOn.ToList());
         if (exePath.Length > 2) Try(c, "disco", () => c.Disco = DiskOf(exePath));
+
+        Try(c, "bios", () => ReadBios(c));
+        Try(c, "seguranca", () => ReadSecurity(c));
+        Try(c, "monitores", () => c.Monitores = AllMonitors());
+        Try(c, "programas", () => c.ProgramasAbertos = OpenPrograms());
+        if (Path.GetFileName(exePath).Equals("cs2.exe", StringComparison.OrdinalIgnoreCase))
+        {
+            Try(c, "cs2_build", () => c.Cs2Build = Cs2Files.Build());
+            Try(c, "cs2_video", () => { if (Cs2Files.VideoPath() is string v) c.Cs2Video = Cs2Files.ParseVideo(File.ReadAllText(v)); });
+            Try(c, "cs2_fps_max", () => c.Cs2FpsMax = Cs2Files.FpsMax());
+            Try(c, "cs2_opcoes", () => c.Cs2OpcoesInicio = SteamInfo.GetLaunchOptions(Cs2Files.AppId));
+            Try(c, "perfil_nvidia", () =>
+            {
+                if (NvidiaProfiles.Available && NvidiaProfiles.Read("cs2.exe") is { } st)
+                    c.PerfilNvidia = $"{st.Profile}; limite de fps {(st.FpsLimit is uint f ? (f == 0 ? "desligado" : f.ToString()) : "padrão")}; pré-renderizados {(st.Prerendered?.ToString() ?? "padrão")}";
+            });
+        }
         return c;
+    }
+
+    private static void ReadBios(SessionContext c)
+    {
+        using (var s = new ManagementObjectSearcher("SELECT SMBIOSBIOSVersion, ReleaseDate FROM Win32_BIOS"))
+            foreach (ManagementObject o in s.Get())
+                using (o)
+                {
+                    c.BiosVersao = o["SMBIOSBIOSVersion"]?.ToString()?.Trim();
+                    if (o["ReleaseDate"] is string d && d.Length >= 8) c.BiosData = $"{d[..4]}-{d.Substring(4, 2)}-{d.Substring(6, 2)}";
+                    break;
+                }
+        using (var s = new ManagementObjectSearcher("SELECT Manufacturer, Product FROM Win32_BaseBoard"))
+            foreach (ManagementObject o in s.Get())
+                using (o) { c.PlacaMae = $"{o["Manufacturer"]} {o["Product"]}".Trim(); break; }
+    }
+
+    /// <summary>VBS/HVCI em uso (Win32_DeviceGuard), Secure Boot e TPM. Só leitura: o FACEIT exige os três ligados.</summary>
+    private static void ReadSecurity(SessionContext c)
+    {
+        try
+        {
+            using var s = new ManagementObjectSearcher(@"root\Microsoft\Windows\DeviceGuard", "SELECT VirtualizationBasedSecurityStatus, SecurityServicesRunning FROM Win32_DeviceGuard");
+            foreach (ManagementObject o in s.Get())
+                using (o)
+                {
+                    c.Vbs = Convert.ToInt32(o["VirtualizationBasedSecurityStatus"] ?? 0) == 2;
+                    c.Hvci = o["SecurityServicesRunning"] is ushort[] run && run.Contains((ushort)2);
+                    break;
+                }
+        }
+        catch (Exception ex) { c.ErrosColeta.Add("vbs: " + ex.Message); }
+        c.SecureBoot = RegDword(Registry.LocalMachine, @"SYSTEM\CurrentControlSet\Control\SecureBoot\State", "UEFISecureBootEnabled") is int sb ? sb == 1 : null;
+        try
+        {
+            using var s = new ManagementObjectSearcher(@"root\CIMV2\Security\MicrosoftTpm", "SELECT SpecVersion, IsEnabled_InitialValue FROM Win32_Tpm");
+            foreach (ManagementObject o in s.Get())
+                using (o) { c.Tpm = $"{o["SpecVersion"]?.ToString()?.Split(',')[0].Trim()} ({(o["IsEnabled_InitialValue"] is true ? "ligado" : "desligado")})"; break; }
+        }
+        catch (Exception ex) { c.ErrosColeta.Add("tpm: " + ex.Message); }
+    }
+
+    /// <summary>Todos os monitores ligados à área de trabalho, não só o do jogo.</summary>
+    private static List<string> AllMonitors()
+    {
+        var list = new List<string>();
+        var dd = new DISPLAY_DEVICE { cb = Marshal.SizeOf<DISPLAY_DEVICE>() };
+        for (uint i = 0; EnumDisplayDevices(null!, i, ref dd, 0); i++)
+        {
+            if ((dd.StateFlags & 1) == 0) continue; // DISPLAY_DEVICE_ATTACHED_TO_DESKTOP
+            var cur = new DEVMODE { dmSize = (short)Marshal.SizeOf<DEVMODE>() };
+            if (!EnumDisplaySettings(dd.DeviceName, -1, ref cur)) continue;
+            string name = dd.DeviceString;
+            var mon = new DISPLAY_DEVICE { cb = Marshal.SizeOf<DISPLAY_DEVICE>() };
+            if (EnumDisplayDevices(dd.DeviceName, 0, ref mon, 0) && mon.DeviceString.Length > 0) name = mon.DeviceString;
+            list.Add($"{dd.DeviceName.TrimStart('\\', '.')}: {name}, {cur.dmPelsWidth}x{cur.dmPelsHeight} a {cur.dmDisplayFrequency} Hz{((dd.StateFlags & 4) != 0 ? " (principal)" : "")}");
+        }
+        return list;
+    }
+
+    /// <summary>Programas com janela e os serviços que importam para o jogo (Razer, Discord, Steam), para ver o que estava aberto na medição.</summary>
+    private static List<string> OpenPrograms()
+    {
+        var all = System.Diagnostics.Process.GetProcesses();
+        try
+        {
+            return all.Where(p => { try { return p.MainWindowHandle != IntPtr.Zero || p.ProcessName.StartsWith("razer", StringComparison.OrdinalIgnoreCase) || p.ProcessName.StartsWith("synapse", StringComparison.OrdinalIgnoreCase); } catch { return false; } })
+                .Select(p => p.ProcessName).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(n => n, StringComparer.OrdinalIgnoreCase).ToList();
+        }
+        finally { foreach (var p in all) p.Dispose(); }
     }
 
     /// <summary>Monitor principal (resolução e Hz atuais), para sugestões fora de uma sessão.</summary>
