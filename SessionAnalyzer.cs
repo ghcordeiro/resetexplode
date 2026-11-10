@@ -167,6 +167,14 @@ public static class SessionAnalyzer
         if (D(r, "reset_explode_cpu_medio_pct") is double me)
             lines.Add(new(null, $"Custo da gravação: o RESET EXPLODE usou {me:0.##}% da CPU."));
 
+        // 7b) Sugestões de experimento (regras com a evidência medida)
+        try
+        {
+            if (DiagnosisRules.FromSession(folder) is { } facts)
+                foreach (var sug in DiagnosisRules.Evaluate(facts)) lines.Add(new(AvisoNivel.Dica, "SUGESTÃO · " + sug.Text));
+        }
+        catch { /* diagnóstico é um extra: nunca derruba o laudo */ }
+
         // 8) Avisos de configuração do início da sessão
         if (r["avisos"] is JsonArray avisos)
             foreach (var a in avisos.Select(x => x?.ToString() ?? "").Where(x => x.Length > 0))
