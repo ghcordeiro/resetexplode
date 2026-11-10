@@ -114,6 +114,16 @@ public static class ErrorReporter
         return sent.FirstOrDefault(s => s.File == file) is { } r ? r.Result : "guardado; não enviado";
     }
 
+    /// <summary>Manda um texto pronto (resumo de teste) como issue "[teste]". Devolve o link ou o motivo de não ter enviado.</summary>
+    public static async Task<string> SendTextAsync(string title, string markdown)
+    {
+        string body = Scrub(markdown);
+        if (body.Length > 60000) body = body[..60000] + "\n…(cortado)";
+        string file = SavePending("[teste] " + OneLine(title, 90), body, null);
+        var sent = await SendPendingAsync();
+        return sent.FirstOrDefault(x => x.File == file) is { } r ? r.Result : "guardado; sem token do GitHub, não enviado";
+    }
+
     /// <summary>Envia o que estiver em pendentes. Sem token, não faz nada (os arquivos ficam para depois).</summary>
     public static async Task<List<(string File, string Result)>> SendPendingAsync()
     {

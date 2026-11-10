@@ -645,4 +645,79 @@ public partial class MainWindow
         RefreshMatrix();
         CsBenchStatus.Text = n > 0 ? $"{n} passo(s) de descoberta na matriz." : "Os passos de descoberta já estão na matriz.";
     }
+
+    // ------------------------------------------------------------------ modo simples
+
+    private void ChkAdvanced_Click(object sender, RoutedEventArgs e) =>
+        BenchAdvanced.Visibility = ChkAdvanced.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
+
+    /// <summary>Resumo do teste em Markdown: o que mudou, os números de cada execução, o laudo da última e os eventos de queda.</summary>
+    private string BuildAnalysisReport(string profile)
+    {
+        var inv = System.Globalization.CultureInfo.InvariantCulture;
+        var runs = SessionProfile.Runs(profile);
+        var sb = new System.Text.StringBuilder();
+        sb.Append($"**Teste:** {profile} · **App:** {Updater.CurrentVersion} · {DateTime.Now:yyyy-MM-dd HH:mm}\n\n");
+
+        sb.Append("### Execuções\n\n| # | válida | aquec. | 1% low | 0,1% low | fps médio | desvio ms | quedas | lat. tela ms | motivo |\n|---|---|---|---|---|---|---|---|---|---|\n");
+        for (int i = 0; i < runs.Count; i++)
+        {
+            var r = runs[i];
+            sb.Append($"| {i + 1} | {(r.Valid ? "sim" : "NÃO")} | {(r.WarmUp ? "sim" : "")} | {r.Low1Fps.ToString("0", inv)} | {r.Low01Fps.ToString("0", inv)} | {r.AvgFps.ToString("0", inv)} | {r.StdDevMs.ToString("0.00", inv)} | {r.Drops} | {r.DisplayLatMs.ToString("0.#", inv)} | {r.Invalid} |\n");
+        }
+        var nz = ProfileComparer.Noise(runs);
+        sb.Append(nz.Runs >= ProfileComparer.MinRuns
+            ? $"\nVariação do 1% low entre execuções: {nz.RangePct.ToString("0.#", inv)}% ({(nz.Reliable ? "confiável" : "alta")}).\n"
+            : "\nMenos de 3 execuções válidas: ruído não medido.\n");
+
+        var m = ExperimentMatrix.Load();
+        if (m.BaselineProfile != null && !m.BaselineProfile.Equals(profile, StringComparison.OrdinalIgnoreCase))
+        {
+            sb.Append($"\n### Contra a linha de base \"{m.BaselineProfile}\"\n\n");
+            foreach (var c in ProfileComparer.CompareRuns(SessionProfile.Runs(m.BaselineProfile), runs)) sb.Append("- ").Append(c.Line).Append('\n');
+        }
+        var rep = ProfileComparer.RepeatedDrops(runs);
+        if (rep.Count > 0)
+            sb.Append("\nQuedas que se repetem no mesmo instante: " + string.Join("; ", rep.Select(x => $"~{x.T:0.#} s (quadro ~{x.Frame}, pior {x.WorstMs:0.#} ms, em {x.Runs} de {x.Total})")) + "\n");
+        if (m.Current is { } cur) sb.Append($"\nPasso atual da matriz: {cur.Profile} — {cur.Change}\n");
+
+        var last = runs.LastOrDefault(r => r.Valid) ?? runs.LastOrDefault();
+        if (last != null)
+        {
+            string laudo = System.IO.Path.Combine(last.Folder, "laudo.txt"), vprof = System.IO.Path.Combine(last.Folder, "vprof.txt");
+            if (File.Exists(laudo)) sb.Append("\n<details><summary>Laudo da última execução</summary>\n\n```\n").Append(File.ReadAllText(laudo)).Append("\n```\n</details>\n");
+            if (File.Exists(vprof)) sb.Append("\n<details><summary>Tabela do mapa (VProf)</summary>\n\n```\n").Append(File.ReadAllText(vprof)).Append("\n```\n</details>\n");
+            if (SessionContext.Load(last.Folder) is { } c)
+            {
+                sb.Append("\n<details><summary>Configuração do PC nessa execução</summary>\n\n```\n");
+                sb.Append($"BIOS {c.BiosVersao} ({c.BiosData}) · driver GPU {c.DriverGpu} · CS2 build {c.Cs2Build} · fps_max {c.Cs2FpsMax} · opções {c.Cs2OpcoesInicio}\n");
+                sb.Append($"Windows {c.Windows} · energia {c.PlanoEnergia} · HAGS {c.Hags} · VBS {c.Vbs} · SecureBoot {c.SecureBoot} · TPM {c.Tpm}\n");
+                sb.Append("Monitores: " + string.Join(" + ", c.Monitores) + "\nRAM: " + string.Join(", ", c.Ram.Select(r => $"{r.CapacidadeGb:0}GB {r.VelocidadeConfiguradaMts}MT/s")) + "\n");
+                sb.Append("Perfil NVIDIA: " + c.PerfilNvidia + "\nAjustes ligados: " + string.Join("; ", c.AjustesLigados) + "\nProgramas abertos: " + string.Join(", ", c.ProgramasAbertos) + "\n");
+                sb.Append("\n```\n</details>\n");
+            }
+        }
+        return sb.ToString();
+    }
+
+    private async void BtnSendAnalysis_Click(object sender, RoutedEventArgs e)
+    {
+        string? profile = SessionProfile.Normalize(SessProfile.Text) ?? SessionProfile.AllProfiles().FirstOrDefault();
+        if (profile == null) { CsBenchStatus.Text = "Ainda não há nenhum teste gravado. Faça uma captura primeiro."; return; }
+        if (string.IsNullOrEmpty(_settings.GitHubToken))
+        {
+            CsBenchStatus.Text = "Falta o token do GitHub (só na primeira vez): cole na janela que abriu.";
+            string? lastSession = null;
+            try { lastSession = SessionStore.List().FirstOrDefault()?.Folder; } catch { }
+            new ProblemReportWindow(_settings, lastSession) { Owner = this }.ShowDialog();
+            if (string.IsNullOrEmpty(_settings.GitHubToken)) return;
+        }
+        CsBenchStatus.Text = "Enviando…";
+        try
+        {
+            string result = await ErrorReporter.SendTextAsync($"{profile} · {SessionProfile.Runs(profile).Count} execuções", BuildAnalysisReport(profile));
+            CsBenchStatus.Text = result.StartsWith("http") ? $"Enviado. Pode me avisar no chat: {result}" : $"Não enviou: {result}";
+        }
+        catch (Exception ex) { CsBenchStatus.Text = "Falhou: " + ex.Message; ErrorReporter.Log("enviar análise", ex); }
+    }
 }

@@ -1286,31 +1286,36 @@
                             <StackPanel>
                                 <TextBlock Text="BENCHMARK CS2" Style="{StaticResource Label}"/>
                                 <TextBlock Foreground="{DynamicResource Muted}" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,10">
-                                    Mede o CS2 sempre do mesmo jeito e compara configurações pelo 1% low, dizendo se a diferença é real ou está dentro do ruído do teste.
-                                    Dê um nome ao perfil (ex.: linha de base), abra o mapa de benchmark e clique em CAPTURA CS2: ela começa quando o jogo estiver na frente.
-                                    Rode pelo menos 3 vezes por perfil; a primeira depois de abrir o jogo é aquecimento. Só offline: com a FACEIT aberta a captura não começa.
+                                    1) Dê um nome ao teste (ex.: linha de base). 2) Abra o mapa de benchmark e clique em CAPTURA CS2. 3) Rode o mapa 3 vezes (a captura se arma sozinha).
+                                    4) Clique em ENVIAR PARA ANÁLISE. Feche a FACEIT antes: a captura só roda offline.
                                 </TextBlock>
                                 <Grid Margin="0,0,0,8">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="90"/>
-                                        <ColumnDefinition Width="90"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBox x:Name="SessProfile" Tag="Perfil de teste (ex.: linha de base)" Margin="0,0,8,0"/>
-                                    <TextBox x:Name="TxtBenchSeconds" Grid.Column="1" Tag="segundos" Margin="0,0,8,0" ToolTip="Duração em segundos. Vazio: termina quando o mapa imprime o resumo (ou em 10 min)."/>
-                                    <TextBox x:Name="TxtBenchRepeat" Grid.Column="2" Tag="repetir" ToolTip="Quantas capturas válidas seguidas. Depois de cada uma a captura se arma sozinha; é só rodar o mapa de novo."/>
+                                    <TextBox x:Name="SessProfile" Tag="Nome do teste (ex.: linha de base)" Margin="0,0,8,0"/>
+                                    <TextBox x:Name="TxtBenchRepeat" Grid.Column="1" Text="3" Tag="vezes" ToolTip="Quantas capturas válidas seguidas. Depois de cada uma a captura se arma sozinha; é só rodar o mapa de novo."/>
                                 </Grid>
-                                <CheckBox x:Name="ChkBenchWarmup" Content="Esta captura é aquecimento (fica fora da comparação)" Margin="0,0,0,6"/>
-                                <CheckBox x:Name="ChkBenchAltTab" Content="Teste de alt-tab: o alt-tab não invalida a captura (use um perfil só para isso)" Margin="0,0,0,10"/>
-                                <CheckBox x:Name="ChkBenchDeep" Content="Diagnóstico profundo (DPC/ISR do kernel): acha o driver que atrasa o sistema; pesa no jogo e a captura não entra em comparações" Margin="0,0,0,10"/>
                                 <StackPanel Orientation="Horizontal">
                                     <Button x:Name="BtnCapture" Style="{StaticResource PrimaryButton}" Content="CAPTURA CS2" Padding="14,7" Margin="0,0,8,0" Click="BtnCapture_Click"/>
+                                    <Button Style="{StaticResource OutlineButton}" Content="ENVIAR PARA ANÁLISE" Padding="14,7" Click="BtnSendAnalysis_Click"
+                                            ToolTip="Manda o resumo do teste (números, laudo, configuração) como issue no GitHub para o Claude analisar."/>
+                                </StackPanel>
+                                <TextBlock x:Name="CsBenchStatus" TextWrapping="Wrap" FontWeight="SemiBold" Margin="0,10,0,0"/>
+                                <CheckBox x:Name="ChkAdvanced" Content="Modo avançado (matriz, comparação, vídeo, opções de captura)" Margin="0,14,0,0" Click="ChkAdvanced_Click"/>
+                                <StackPanel x:Name="BenchAdvanced" Visibility="Collapsed" Margin="0,12,0,0">
+                                <TextBox x:Name="TxtBenchSeconds" Tag="duração em segundos (vazio: até o mapa terminar)" Margin="0,0,0,8" HorizontalAlignment="Left" Width="300"
+                                         ToolTip="Duração em segundos. Vazio: termina quando o mapa imprime o resumo (ou em 10 min)."/>
+                                <CheckBox x:Name="ChkBenchWarmup" Content="Esta captura é aquecimento (fica fora da comparação)" Margin="0,0,0,6"/>
+                                <CheckBox x:Name="ChkBenchAltTab" Content="Teste de alt-tab: o alt-tab não invalida a captura (use um perfil só para isso)" Margin="0,0,0,6"/>
+                                <CheckBox x:Name="ChkBenchDeep" Content="Diagnóstico profundo (DPC/ISR do kernel): pesa no jogo e a captura não entra em comparações" Margin="0,0,0,10"/>
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
                                     <Button Style="{StaticResource OutlineButton}" Content="TESTE DE RUÍDO" Padding="14,7" Margin="0,0,8,0" Click="BtnNoiseTest_Click"
-                                            ToolTip="5 capturas da mesma configuração: diz se o benchmark varia pouco o bastante (até 5%) para confiar nas comparações. Faça antes de tudo."/>
+                                            ToolTip="5 capturas da mesma configuração: diz se o benchmark varia pouco o bastante (até 5%) para confiar nas comparações."/>
                                     <Button Style="{StaticResource OutlineButton}" Content="PERFIL MANUAL (BIOS)" Padding="14,7" Click="BtnManualProfile_Click"
                                             ToolTip="PBO, Curve Optimizer, timings de RAM: o que a BIOS tem e o Windows não lê. Cada captura copia esse arquivo."/>
                                 </StackPanel>
-                                <TextBlock x:Name="CsBenchStatus" TextWrapping="Wrap" FontWeight="SemiBold" Margin="0,10,0,0"/>
 
                                 <TextBlock Text="MATRIZ GUIADA" Style="{StaticResource Label}" Margin="0,18,0,6"/>
                                 <TextBlock Foreground="{DynamicResource Muted}" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,6">
@@ -1384,6 +1389,7 @@
                                     <Button Style="{StaticResource OutlineButton}" Content="LER ATUAL" Padding="14,7" Margin="0,0,8,0" Click="BtnVideoRead_Click"/>
                                     <Button Style="{StaticResource PrimaryButton}" Content="APLICAR" Padding="14,7" Margin="0,0,8,0" Click="BtnVideoApply_Click"/>
                                     <Button Style="{StaticResource OutlineButton}" Content="RESTAURAR" Padding="14,7" Click="BtnVideoRestore_Click"/>
+                                </StackPanel>
                                 </StackPanel>
                                 <!-- BENCH-CARD-END -->
                             </StackPanel>

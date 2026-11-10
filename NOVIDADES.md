@@ -50,6 +50,9 @@ Versão pessoal do RESET EXPLODE, só para CS2 neste PC. Mede a estabilidade do 
 - Matrizes salvas ganham os passos novos sozinhas. A leitura dos ajustes lentos (PowerShell, agendador) roda em segundo plano e não entra no retrato das sessões.
 - **Apps pré-instalados** (Otimização): remove Clipchamp, Notícias, Clima, Xbox, Teams pessoal e afins só para o seu usuário, com reinstalação pela Store.
 
+**Sessões › Benchmark CS2 (modo simples)**: nome do teste, CAPTURA CS2 (3 vezes por padrão) e **ENVIAR PARA ANÁLISE** (resumo, laudo e configuração como issue `[teste]`).
+Matriz, comparação, vídeo e opções de captura ficam no "Modo avançado".
+
 **Sessões › Benchmark CS2**
 - **Perfil de teste** (ex.: "linha de base", "fps_max 240"): cada captura é gravada com o nome do perfil e nunca é apagada pela limpeza de espaço.
 - **CAPTURA CS2**: fica armada e começa quando o CS2 está em primeiro plano. Termina no tempo escolhido ou quando o mapa de benchmark imprime
