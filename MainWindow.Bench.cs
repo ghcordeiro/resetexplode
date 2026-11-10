@@ -256,4 +256,43 @@ public partial class MainWindow
         }
         catch (Exception ex) { CsBenchStatus.Text = $"Não foi possível gerar o relatório: {ex.Message}"; }
     }
+
+    // ------------------------------------------------------------------ vídeo do CS2 (teste)
+
+    private void BtnVideoRead_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            string? path = Cs2Files.VideoPath();
+            if (path == null) { CsBenchStatus.Text = "Não achei o cs2_video.txt (abra o CS2 ao menos uma vez neste PC)."; return; }
+            TxtVideoChanges.Text = string.Join("\n", Cs2VideoConfig.Editable(Cs2Files.ParseVideo(File.ReadAllText(path))));
+            CsBenchStatus.Text = "Edite só os valores que quer testar (pode apagar as linhas que não mudam) e clique em APLICAR.";
+        }
+        catch (Exception ex) { CsBenchStatus.Text = $"Não foi possível ler o vídeo: {ex.Message}"; }
+    }
+
+    private void BtnVideoApply_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            string? path = Cs2Files.VideoPath();
+            if (path == null) { CsBenchStatus.Text = "Não achei o cs2_video.txt."; return; }
+            var changes = Cs2VideoConfig.ParseChanges(TxtVideoChanges.Text);
+            if (changes.Count == 0) { CsBenchStatus.Text = "Escreva ao menos uma opção (chave=valor)."; return; }
+            Cs2VideoConfig.ApplyToFile(path, changes);
+            CsBenchStatus.Text = $"{changes.Count} opção(ões) gravada(s). Abra o CS2 e grave o perfil. RESTAURAR desfaz.";
+        }
+        catch (Exception ex) { CsBenchStatus.Text = ex.Message; }
+    }
+
+    private void BtnVideoRestore_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            string? path = Cs2Files.VideoPath();
+            if (path == null) { CsBenchStatus.Text = "Não achei o cs2_video.txt."; return; }
+            CsBenchStatus.Text = Cs2VideoConfig.Restore(path) ? "Vídeo do CS2 restaurado ao estado de antes dos testes." : "Não há backup para restaurar.";
+        }
+        catch (Exception ex) { CsBenchStatus.Text = ex.Message; }
+    }
 }

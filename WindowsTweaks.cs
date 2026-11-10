@@ -10,9 +10,8 @@ namespace ResetExplode;
 /// <summary>
 /// Ajuste do Windows para jogos: lê o estado atual, aplica e guarda o valor original (em AppSettings.TweakBackup)
 /// na primeira vez que é alterado, para "Restaurar originais" desfazer tudo.
-/// Só ajustes documentados e reversíveis. Os que reduzem a segurança (VBS/HVCI, Spectre/Meltdown, exclusões do Defender)
-/// têm <see cref="Tweak.Warning"/>: a tela pede confirmação antes de ligar, e desligar volta ao valor original.
-/// Nunca mexe em UAC, firewall nem Windows Update.
+/// Só ajustes documentados e reversíveis. Nenhum reduz a segurança: VBS, Integridade de Memória, Secure Boot e o Defender
+/// ficam como estão (o FACEIT exige). Nunca mexe em UAC nem firewall.
 /// </summary>
 public sealed class Tweak : INotifyPropertyChanged
 {
@@ -43,7 +42,14 @@ public static class WindowsTweaks
 {
     private const string HighPerformance = "8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c";
 
-    public static List<Tweak> All() => new()
+    public static List<Tweak> All()
+    {
+        var list = Base();
+        list.AddRange(CsProfile.Tweaks());
+        return list;
+    }
+
+    private static List<Tweak> Base() => new()
     {
         new Tweak
         {
@@ -187,72 +193,6 @@ public static class WindowsTweaks
             "Evita picos de disco e CPU durante o jogo. A busca do Iniciar continua achando apps, mas procurar dentro de arquivos e no Outlook fica lento.",
             Registry.LocalMachine, @"SYSTEM\CurrentControlSet\Services\WSearch", "Start", on: 4, off: 2,
             absentMeansOn: false, needsRestart: true),
-
-        // ---------------- otimização profunda (reduzem a segurança) ----------------
-
-        new Tweak
-        {
-            Id = "vbs", Title = "Desligar Integridade de Memória e VBS",
-            Description = "Desliga a Integridade de Memória (HVCI) e a Segurança Baseada em Virtualização, que rodam o núcleo do Windows dentro de um hipervisor.",
-            Effect = "É o ajuste que mais rende: a Microsoft indica de 5 a 10% de FPS em alguns jogos. Desmarcar volta ao original.",
-            NeedsRestart = true,
-            Warning = "Isto REDUZ A SEGURANÇA do Windows.\n\nA Integridade de Memória impede que drivers maliciosos ou vulneráveis rodem no núcleo do sistema. " +
-                      "Sem ela, um malware com acesso de administrador fica muito mais difícil de remover. Alguns jogos com anti-cheat (Valorant, " +
-                      "FACEIT) e o Windows Hello avançado podem exigir que ela esteja ligada.\n\nDesligar mesmo assim?",
-            Read = () => ReadDword(Registry.LocalMachine, HvciPath, "Enabled") == 0 &&
-                         ReadDword(Registry.LocalMachine, VbsPath, "EnableVirtualizationBasedSecurity") == 0,
-            Write = (on, s) =>
-            {
-                if (!on) { RestoreVbs(s); return; }
-                SetDword(s, "vbs.hvci", Registry.LocalMachine, HvciPath, "Enabled", 0);
-                SetDword(s, "vbs.vbs", Registry.LocalMachine, VbsPath, "EnableVirtualizationBasedSecurity", 0);
-            },
-            Restore = RestoreVbs,
-        },
-        new Tweak
-        {
-            Id = "spectre", Title = "Desligar proteções contra Spectre e Meltdown",
-            Description = "Desativa as mitigações do Windows para falhas de CPU (variantes 2 e 3 do Spectre/Meltdown).",
-            Effect = "Ganho pequeno em CPUs recentes (Ryzen 3000+, Intel 10ª geração+); maior em Intel até a 8ª geração. Desmarcar volta ao original.",
-            NeedsRestart = true,
-            Warning = "Isto REDUZ A SEGURANÇA do Windows.\n\nSem essas proteções, um programa ou site malicioso pode ler dados de outros " +
-                      "programas na memória (senhas, chaves). O risco é maior em PCs com navegador aberto o tempo todo.\n\nDesligar mesmo assim?",
-            Read = () => ReadDword(Registry.LocalMachine, MmPath, "FeatureSettingsOverride") == 3 &&
-                         ReadDword(Registry.LocalMachine, MmPath, "FeatureSettingsOverrideMask") == 3,
-            Write = (on, s) =>
-            {
-                if (!on) { RestoreSpectre(s); return; }
-                SetDword(s, "spectre.o", Registry.LocalMachine, MmPath, "FeatureSettingsOverride", 3);
-                SetDword(s, "spectre.m", Registry.LocalMachine, MmPath, "FeatureSettingsOverrideMask", 3);
-            },
-            Restore = RestoreSpectre,
-        },
-        new Tweak
-        {
-            Id = "defender", Title = "Excluir pastas dos jogos do Windows Defender",
-            Description = "O Defender deixa de examinar as pastas dos jogos detectados (Steam, Epic, GOG, Ubisoft). Jogos adicionados à mão não entram.",
-            Effect = "Carregamentos mais rápidos e menos engasgos quando o jogo lê arquivos. Instalou jogo novo? Desmarque e marque de novo.",
-            Warning = "Isto REDUZ A SEGURANÇA do Windows.\n\nArquivos nessas pastas não serão mais verificados. Mods, cracks ou trapaças com vírus " +
-                      "colocados ali passam sem alerta.\n\nExcluir as pastas mesmo assim?",
-            Read = () =>
-            {
-                try { var f = GameFolders(); var ex = DefenderExclusions(); return f.Length > 0 && f.All(d => ex.Contains(d, StringComparer.OrdinalIgnoreCase)); }
-                catch { return null; } // Defender desligado ou antivírus de outra marca: o WMI do Defender não responde
-            },
-            Write = (on, s) =>
-            {
-                if (!on) { RestoreDefender(s); return; }
-                var current = DefenderExclusions();
-                var add = GameFolders().Where(d => !current.Contains(d, StringComparer.OrdinalIgnoreCase)).ToArray();
-                if (GameFolders().Length == 0) throw new InvalidOperationException("Nenhum jogo detectado na Steam, Epic, GOG ou Ubisoft.");
-                if (add.Length == 0) return;
-                // Guarda só o que o app acrescentou, para nunca remover exclusões que o usuário já tinha.
-                var mine = (s.TweakBackup.GetValueOrDefault("defender") ?? "").Split('|', StringSplitOptions.RemoveEmptyEntries);
-                s.TweakBackup["defender"] = string.Join('|', mine.Concat(add).Distinct(StringComparer.OrdinalIgnoreCase));
-                DefenderCall("Add", add);
-            },
-            Restore = RestoreDefender,
-        },
     };
 
     /// <summary>Desfaz tudo que foi alterado pelo app (valores guardados antes da primeira alteração).</summary>
@@ -275,19 +215,19 @@ public static class WindowsTweaks
         Restore = s => RestoreDword(s, id, hive, path, name),
     };
 
-    private static int? ReadDword(RegistryKey hive, string path, string name)
+    internal static int? ReadDword(RegistryKey hive, string path, string name)
     {
         using var k = hive.OpenSubKey(path);
         return k?.GetValue(name) is int v ? v : null;
     }
 
-    private static string? ReadString(RegistryKey hive, string path, string name)
+    internal static string? ReadString(RegistryKey hive, string path, string name)
     {
         using var k = hive.OpenSubKey(path);
         return k?.GetValue(name)?.ToString();
     }
 
-    private static void SetDword(AppSettings s, string backupKey, RegistryKey hive, string path, string name, int value)
+    internal static void SetDword(AppSettings s, string backupKey, RegistryKey hive, string path, string name, int value)
     {
         if (!s.TweakBackup.ContainsKey(backupKey))
             s.TweakBackup[backupKey] = ReadDword(hive, path, name)?.ToString() ?? "<ausente>";
@@ -295,7 +235,7 @@ public static class WindowsTweaks
         k.SetValue(name, value, RegistryValueKind.DWord);
     }
 
-    private static void RestoreDword(AppSettings s, string backupKey, RegistryKey hive, string path, string name)
+    internal static void RestoreDword(AppSettings s, string backupKey, RegistryKey hive, string path, string name)
     {
         if (s.TweakBackup.GetValueOrDefault(backupKey) is not string prev) return;
         using var k = hive.CreateSubKey(path);
@@ -303,7 +243,7 @@ public static class WindowsTweaks
         else k.SetValue(name, int.Parse(prev), RegistryValueKind.DWord);
     }
 
-    private static void SetString(AppSettings s, string backupKey, RegistryKey hive, string path, string name, string value)
+    internal static void SetString(AppSettings s, string backupKey, RegistryKey hive, string path, string name, string value)
     {
         if (!s.TweakBackup.ContainsKey(backupKey))
             s.TweakBackup[backupKey] = ReadString(hive, path, name) ?? "<ausente>";
@@ -311,7 +251,7 @@ public static class WindowsTweaks
         k.SetValue(name, value, RegistryValueKind.String);
     }
 
-    private static void RestoreString(AppSettings s, string backupKey, RegistryKey hive, string path, string name)
+    internal static void RestoreString(AppSettings s, string backupKey, RegistryKey hive, string path, string name)
     {
         if (s.TweakBackup.GetValueOrDefault(backupKey) is not string prev) return;
         using var k = hive.CreateSubKey(path);
@@ -351,9 +291,6 @@ public static class WindowsTweaks
 
     private const string MmcssPath = @"SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile";
     private const string MmcssGames = MmcssPath + @"\Tasks\Games";
-    private const string HvciPath = @"SYSTEM\CurrentControlSet\Control\DeviceGuard\Scenarios\HypervisorEnforcedCodeIntegrity";
-    private const string VbsPath = @"SYSTEM\CurrentControlSet\Control\DeviceGuard";
-    private const string MmPath = @"SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management";
 
     private static void RestoreMmcss(AppSettings s)
     {
@@ -364,67 +301,19 @@ public static class WindowsTweaks
         RestoreString(s, "mmcss.sfio", Registry.LocalMachine, MmcssGames, "SFIO Priority");
     }
 
-    private static void RestoreVbs(AppSettings s)
-    {
-        RestoreDword(s, "vbs.hvci", Registry.LocalMachine, HvciPath, "Enabled");
-        RestoreDword(s, "vbs.vbs", Registry.LocalMachine, VbsPath, "EnableVirtualizationBasedSecurity");
-    }
-
-    private static void RestoreSpectre(AppSettings s)
-    {
-        RestoreDword(s, "spectre.o", Registry.LocalMachine, MmPath, "FeatureSettingsOverride");
-        RestoreDword(s, "spectre.m", Registry.LocalMachine, MmPath, "FeatureSettingsOverrideMask");
-    }
-
-    // ---- Defender (via WMI do próprio Defender, sem PowerShell) ----
-
-    private const string DefenderNs = @"root\Microsoft\Windows\Defender";
-
-    private static string[] DefenderExclusions()
-    {
-        using var q = new ManagementObjectSearcher(DefenderNs, "SELECT ExclusionPath FROM MSFT_MpPreference");
-        foreach (ManagementObject o in q.Get())
-            using (o) return (o["ExclusionPath"] as string[] ?? Array.Empty<string>()).Select(p => p.TrimEnd('\\')).ToArray();
-        return Array.Empty<string>();
-    }
-
-    private static void DefenderCall(string method, string[] paths)
-    {
-        using var c = new ManagementClass(DefenderNs, "MSFT_MpPreference", null);
-        using var input = c.GetMethodParameters(method);
-        input["ExclusionPath"] = paths;
-        using var result = c.InvokeMethod(method, input, null);
-        if (result?["ReturnValue"] is uint rv && rv != 0)
-            throw new InvalidOperationException($"O Defender recusou a alteração (código {rv}). Antivírus de outra marca ou política da empresa podem bloquear.");
-    }
-
-    private static void RestoreDefender(AppSettings s)
-    {
-        if (s.TweakBackup.GetValueOrDefault("defender") is not string mine || mine.Length == 0) return;
-        DefenderCall("Remove", mine.Split('|'));
-        s.TweakBackup["defender"] = "";
-    }
-
-    /// <summary>Pastas dos jogos instalados; os da Steam entram pela pasta steamapps\common inteira.</summary>
-    private static string[] GameFolders() => GameLibrary.Scan(Array.Empty<CustomGame>())
-        .Select(g => g.InstallDir?.TrimEnd('\\') ?? "")
-        .Where(d => d.Length > 3 && Directory.Exists(d)) // nunca a raiz de um disco
-        .Select(d => Path.GetDirectoryName(d) is string parent && parent.EndsWith(@"\steamapps\common", StringComparison.OrdinalIgnoreCase) ? parent : d)
-        .Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
-
     // ---- configurações do plano de energia atual (só na tomada: índice AC) ----
 
     private const string SubUsb = "2a737441-1930-4402-8d77-b2bebba308a3", UsbSuspend = "48e6b7a6-50f5-4782-a5d4-53bb8f07e226";
     private const string SubPcie = "501a4d13-42af-4429-9fd1-a8218c268e20", Aspm = "ee12f906-d277-404b-b6da-e5fa1a576df5";
 
     /// <summary>Índice AC atual. A saída do powercfg é traduzida, mas o primeiro número 0x... é sempre o valor AC.</summary>
-    private static int? PowerIndex(string sub, string setting)
+    internal static int? PowerIndex(string sub, string setting)
     {
         var m = System.Text.RegularExpressions.Regex.Match(PowerCfg($"/q SCHEME_CURRENT {sub} {setting}"), @"0x([0-9a-fA-F]{8})");
         return m.Success ? Convert.ToInt32(m.Groups[1].Value, 16) : null;
     }
 
-    private static void SetPowerIndex(AppSettings s, string backupKey, string sub, string setting, int value)
+    internal static void SetPowerIndex(AppSettings s, string backupKey, string sub, string setting, int value)
     {
         if (!s.TweakBackup.ContainsKey(backupKey) && ActiveScheme() is string scheme && PowerIndex(sub, setting) is int cur)
             s.TweakBackup[backupKey] = $"{scheme}|{cur}";
@@ -432,7 +321,7 @@ public static class WindowsTweaks
         PowerCfg("/setactive SCHEME_CURRENT"); // aplica na hora
     }
 
-    private static void RestorePowerIndex(AppSettings s, string backupKey, string sub, string setting)
+    internal static void RestorePowerIndex(AppSettings s, string backupKey, string sub, string setting)
     {
         if (s.TweakBackup.GetValueOrDefault(backupKey)?.Split('|') is not [var scheme, var value]) return;
         PowerCfg($"/setacvalueindex {scheme} {sub} {setting} {value}");
@@ -448,13 +337,13 @@ public static class WindowsTweaks
         return m.Success ? m.Groups[1].Value.Trim() : null;
     }
 
-    private static string? ActiveScheme()
+    internal static string? ActiveScheme()
     {
         var m = System.Text.RegularExpressions.Regex.Match(PowerCfg("/getactivescheme"), @"[0-9a-fA-F\-]{36}");
         return m.Success ? m.Value.ToLowerInvariant() : null;
     }
 
-    private static string PowerCfg(string args)
+    internal static string PowerCfg(string args)
     {
         var psi = new ProcessStartInfo("powercfg.exe", args)
         {
