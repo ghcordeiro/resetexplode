@@ -40,7 +40,7 @@ public static class Optimizer
         "MsMpEng", "NisSrv", "SgrmBroker", "audiodg", "conhost", "dllhost", "spoolsv", "WmiPrvSE", "LockApp", "ApplicationFrameHost",
         "SystemSettings", "smartscreen", "MemCompression", "Secure System", "WUDFHost", "dasHost", "nvcontainer", "NVDisplay.Container",
         "atiesrxx", "atieclxx", "amdfendrsr", "RadeonSoftware", "igfxEM", "PawnIO", "ResetExplode", "cmd", "powershell", "WindowsTerminal",
-        "OpenConsole", "devenv", "Code", "dotnet",
+        "OpenConsole", "devenv", "Code", "dotnet", "cs2", "csgo", "faceit", "FACEITClient",
     };
 
     /// <summary>Processos de segundo plano seguros de fechar durante o jogo (pré-marcados).</summary>
@@ -82,6 +82,7 @@ public static class Optimizer
         var result = new List<BackgroundApp>();
         foreach (var (name, procs) in groups)
         {
+            if (procs.Any(IsGameProcess)) continue; // nunca oferece fechar um jogo (inclusive o que está rodando agora)
             bool hasWindow = procs.Any(p => SafeWindow(p) != IntPtr.Zero);
             bool suggested = SuggestedApps.ContainsKey(name);
             if (!hasWindow && !suggested) continue; // processos auxiliares sem janela ficam de fora
@@ -99,6 +100,18 @@ public static class Optimizer
             });
         }
         return result.OrderByDescending(a => a.Suggested).ThenByDescending(a => a.MemoryBytes).ToList();
+    }
+
+    /// <summary>Programa que roda de dentro de uma pasta de jogo (Steam, Epic, GOG, Ubisoft).</summary>
+    private static bool IsGameProcess(Process p)
+    {
+        try
+        {
+            string path = p.MainModule?.FileName ?? "";
+            return path.Contains(@"\steamapps\common\", StringComparison.OrdinalIgnoreCase) || path.Contains(@"\Epic Games\", StringComparison.OrdinalIgnoreCase)
+                || path.Contains(@"\GOG Galaxy\Games\", StringComparison.OrdinalIgnoreCase) || path.Contains(@"\Ubisoft Game Launcher\games\", StringComparison.OrdinalIgnoreCase);
+        }
+        catch { return false; }
     }
 
     private static IntPtr SafeWindow(Process p) { try { return p.MainWindowHandle; } catch { return IntPtr.Zero; } }
