@@ -62,6 +62,10 @@ public sealed class ExperimentMatrix
         {
             gs.Change = "G-Sync + V-Sync LIGADO no painel NVIDIA + Reflex Ligado+Boost + Máximo de QPS no jogo 197 (tire +fps_max 0 das opções de inicialização)"; changed = true;
         }
+        if (Steps.FirstOrDefault(x => x.Profile == "pbo limites" && x.Status == "pendente") is { } pbo)
+        {
+            pbo.Status = "pulado"; pbo.Result = "já estava assim na BIOS (PPT 120 W, TDC 80 A, EDC 125 A)"; changed = true;
+        }
         // O passo da BIOS foi descartado pelos dados (a BIOS instalada já é recente): matrizes antigas pulam ele sozinhas.
         if (Steps.FirstOrDefault(x => x.Profile == "bios atualizada" && x.Status == "pendente") is { } bios)
         {
@@ -107,6 +111,9 @@ public sealed class ExperimentMatrix
         S("preferred cores off", "BIOS: Preferred Cores desligado (CPPC continua ligado). Salve um OC Profile antes", "agendamento de núcleos");
         S("c-states", "BIOS: Global C-State Control desligado e Power Supply Idle Control em Typical Current Idle. Esquenta mais em repouso", "latência de acordar núcleos");
         S("pbo limites", "BIOS: PBO › Advanced com limites manuais PPT 120 W, TDC 80 A, EDC 120 A (mantendo Curve Optimizer -20 e boost +200). Salve um OC Profile antes", "teto de potência nos picos (o 5700X bateu 87 W de 88 W)");
+        m.Steps[^1].Status = "pulado";
+        m.Steps[^1].Result = "já estava assim na BIOS (PPT 120 W, TDC 80 A, EDC 125 A)";
+        S("smt off", "BIOS: AMD Overclocking › SMT Control = Disabled (8 núcleos, 8 threads). Se piorar, volte para Auto", "menos disputa entre threads no núcleo principal");
         S("co -15", "Curve Optimizer -15 e boost +100 MHz", "clock stretching com -20");
         S("rebar", "Above 4G Decoding e Re-Size BAR ligados na BIOS", "ganho de GPU");
         S("dynamic tick", "Otimização › ligue \"Experimento: desligar o dynamic tick\" e reinicie", "timer do sistema");
