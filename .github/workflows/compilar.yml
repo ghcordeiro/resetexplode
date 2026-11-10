@@ -1,10 +1,22 @@
 name: Compilar
 
-# Branches de trabalho (tudo menos main): compila e sobe o .exe como artifact. Não cria release.
+# Branches de trabalho (tudo menos main): compila e sobe o .exe como artifact.
+# No branch pc-de-cs2 também gera o instalador e publica a pre-release "cs2-N" (N = número desta execução), que o app usa
+# para se atualizar sozinho. A release "latest" pública (workflow Publicar, só na main) não é tocada.
 on:
   push:
     branches-ignore: [main]
   workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: compilar-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  VERSION: 0.17.${{ github.run_number }}
 
 jobs:
   build:
@@ -17,9 +29,40 @@ jobs:
           dotnet-version: '8.0.x'
 
       - name: Publicar (arquivo único, com o .NET embutido)
-        run: dotnet publish ResetExplode.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:DebugType=None -o dist -nologo
+        run: dotnet publish ResetExplode.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:DebugType=None -p:Version=${{ env.VERSION }} -o dist -nologo
+
+      - name: SHA-256 do .exe
+        shell: pwsh
+        run: |
+          $h = (Get-FileHash dist/ResetExplode.exe -Algorithm SHA256).Hash.ToLowerInvariant()
+          Set-Content -Path dist/ResetExplode.exe.sha256 -Value $h -NoNewline -Encoding ascii
+
+      - name: Instalador (Inno Setup)
+        shell: pwsh
+        run: |
+          $iscc = (Get-Command iscc.exe -ErrorAction SilentlyContinue).Source
+          if (-not $iscc) { $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" }
+          if (-not (Test-Path $iscc)) { choco install innosetup -y --no-progress; $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" }
+          & $iscc "/DAppVersion=$env:VERSION" "/DDistDir=$PWD\dist" installer\ResetExplode.iss
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - uses: actions/upload-artifact@v4
         with:
           name: ResetExplode-${{ github.ref_name }}
-          path: dist/ResetExplode.exe
+          path: |
+            dist/ResetExplode.exe
+            dist/ResetExplode-Setup.exe
+
+      - name: Pre-release cs2-N (só no pc-de-cs2)
+        if: github.ref == 'refs/heads/pc-de-cs2'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $tag = "cs2-${{ github.run_number }}"
+          gh release create $tag dist/ResetExplode-Setup.exe dist/ResetExplode.exe dist/ResetExplode.exe.sha256 `
+            --target $env:GITHUB_SHA --prerelease --latest=false --title "PC de CS2 · build ${{ github.run_number }} ($env:VERSION)" --notes-file NOVIDADES.md
+          # Guarda só as 5 mais recentes
+          $old = gh release list --limit 100 --json tagName,createdAt | ConvertFrom-Json |
+                 Where-Object { $_.tagName -like 'cs2-*' } | Sort-Object createdAt -Descending | Select-Object -Skip 5
+          foreach ($r in $old) { gh release delete $r.tagName --cleanup-tag --yes }

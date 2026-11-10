@@ -53,21 +53,19 @@ public sealed class CustomGame
     public string Args { get; set; } = "";
 }
 
-/// <summary>Configurações em %AppData%\ResetExplode. A chave da API é cifrada com DPAPI (só este usuário do Windows a lê).</summary>
+/// <summary>Configurações em %AppData%\ResetExplode. O token do GitHub (relatórios de problema) é cifrado com DPAPI (só este usuário do Windows a lê).</summary>
 public sealed class AppSettings
 {
     public static string Folder { get; } =
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "ResetExplode");
     private static string FilePath => Path.Combine(Folder, "settings.json");
 
-    public string? HowManyFpsKeyProtected { get; set; }
+    public string? GitHubTokenProtected { get; set; }
 
     public List<BenchRecord> BenchRecords { get; set; } = new();
 
     // RESET OTIMIZA: valores originais dos ajustes do Windows antes da primeira alteração ("<ausente>" = não existia)
     public Dictionary<string, string?> TweakBackup { get; set; } = new();
-    /// <summary>ComDB original (reservas de números COM) antes da primeira "liberação".</summary>
-    public byte[]? ComDbBackup { get; set; }
     /// <summary>Programas de inicialização removidos, para "Restaurar removidos".</summary>
     public List<StartupBackup> StartupRemoved { get; set; } = new();
 
@@ -89,22 +87,23 @@ public sealed class AppSettings
     /// <summary>Itens escolhidos para o overlay (chaves de OverlayMetrics); null = padrão.</summary>
     public List<string>? OverlayItems { get; set; }
 
-    [System.Text.Json.Serialization.JsonIgnore] // nunca gravar a chave em texto puro
-    public string? HowManyFpsKey
+    /// <summary>Token do GitHub (fine-grained, só Issues do repositório) para enviar relatórios de problema. Nunca vai em texto puro para o disco.</summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public string? GitHubToken
     {
         get
         {
-            if (string.IsNullOrEmpty(HowManyFpsKeyProtected)) return null;
+            if (string.IsNullOrEmpty(GitHubTokenProtected)) return null;
             try
             {
-                var bytes = ProtectedData.Unprotect(Convert.FromBase64String(HowManyFpsKeyProtected), null, DataProtectionScope.CurrentUser);
+                var bytes = ProtectedData.Unprotect(Convert.FromBase64String(GitHubTokenProtected), null, DataProtectionScope.CurrentUser);
                 return Encoding.UTF8.GetString(bytes);
             }
             catch { return null; }
         }
         set
         {
-            HowManyFpsKeyProtected = string.IsNullOrWhiteSpace(value)
+            GitHubTokenProtected = string.IsNullOrWhiteSpace(value)
                 ? null
                 : Convert.ToBase64String(ProtectedData.Protect(Encoding.UTF8.GetBytes(value.Trim()), null, DataProtectionScope.CurrentUser));
         }

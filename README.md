@@ -14,6 +14,9 @@ App WPF (.NET 8) com:
 - **Sistema, Sensores, Placa de vídeo, Discos (S.M.A.R.T.), Rede, Drivers, Inicialização**.
 - **Stress test** (CPU/RAM/GPU), **Overclock** (limite de energia/clock NVIDIA e verificação de estabilidade) e **Memória** (latência, banda e carregamento).
 - **Relatório exportável** (HTML/JSON) do sistema.
+- **Instalador e atualização automática** (`installer/ResetExplode.iss`, `Updater.cs`): cada push no `pc-de-cs2` publica a pre-release `cs2-N`; o app se atualiza sozinho.
+- **Relatar problema** (`ErrorReporter.cs`, `ProblemReportWindow.cs`): erros e relatos viram issues `[relato]` neste repositório.
+  No Mac: `gh issue list -R ghcordeiro/resetexplode --search "[relato] in:title"`.
 
 ## Interface
 - Visual preto e branco minimalista em **blocos** (cartões arredondados, inspirado em painéis de dashboard). Um único menu lateral

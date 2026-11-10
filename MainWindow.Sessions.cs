@@ -99,7 +99,7 @@ public partial class MainWindow
                                           _probes.SelectMany(p => p.Columns).ToList());
             foreach (var probe in _probes)
                 try { probe.Start(pid, exe, session.Folder); }
-                catch (Exception ex) { session.Note("sonda_falhou", $"{probe.GetType().Name}: {ex.Message}"); }
+                catch (Exception ex) { session.Note("sonda_falhou", $"{probe.GetType().Name}: {ex.Message}"); ErrorReporter.Log($"sonda {probe.GetType().Name}", ex); }
 
             _session = session;
             _sessionProc = proc;
@@ -228,6 +228,7 @@ public partial class MainWindow
 
         void Done(FrameSummary? sum, Exception? ex)
         {
+            if (ex != null) ErrorReporter.Log("salvar sessão", ex);
             AddEvent("", "Gravação de sessão", ex == null && sum != null
                 ? $"{s.Game} · {sum.AvgFps:0} FPS, 1% low {sum.Low1Fps:0}" : $"{s.Game} · falha ao salvar: {ex?.Message}", ex == null ? "ok" : "abortado");
             if (PageSessions.IsVisible) { RefreshSessionList(); RefreshBenchProfiles(); }

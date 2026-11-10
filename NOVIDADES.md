@@ -2,6 +2,16 @@
 
 Versão pessoal do RESET EXPLODE, só para CS2 neste PC. Mede a estabilidade do fps, aponta o gargalo, deixa o Windows dedicado ao jogo e perdeu tudo que não servia a isso.
 
+**Instalar e atualizar**
+- Instale uma vez com o **ResetExplode-Setup.exe** da pre-release mais nova (`cs2-N`) em Releases. Fica em `%LocalAppData%\Programs\ResetExplode`, com atalho no menu Iniciar.
+- O app procura versão nova ao abrir e a cada 6 h. Quando houver, aparece **ATUALIZAR** no alto da janela: baixa, confere o SHA-256, troca o arquivo e reabre.
+  Não atualiza durante uma gravação.
+
+**Relatar problema** (ícone de inseto no alto da janela)
+- Erros inesperados viram relatório automático; o botão manda um relato seu com o laudo da última sessão. Vão como issue no GitHub do app
+  (nome de usuário, pasta do perfil e nome do PC são trocados por marcadores). Sem token configurado, ficam guardados e vão depois.
+- Na primeira vez, cole um token "fine-grained" do GitHub com acesso só ao repositório `resetexplode` e permissão **Issues: Read and write**.
+
 **Sessões › Benchmark CS2**
 - **Perfil de teste** (ex.: "linha de base", "fps_max 240"): cada captura é gravada com o nome do perfil e nunca é apagada pela limpeza de espaço.
 - **CAPTURA CS2**: fica armada e começa quando o CS2 está em primeiro plano. Termina no tempo escolhido ou quando o mapa de benchmark imprime

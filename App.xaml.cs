@@ -16,9 +16,16 @@ public partial class App : Application
 
     protected override void OnStartup(StartupEventArgs e)
     {
-        bool first;
-        try { _single = new Mutex(true, @"Local\ResetExplode.SingleInstance", out first); }
-        catch (UnauthorizedAccessException) { first = false; } // criado por outra instância com outro nível de permissão
+        ErrorReporter.Init(this);
+        bool first = false;
+        // Depois de uma atualização, a versão antiga ainda está fechando: espera ela soltar a trava (até 20 s) em vez de desistir.
+        int tries = e.Args.Contains(Updater.RestartArg) ? 40 : 1;
+        for (int i = 0; i < tries && !first; i++)
+        {
+            if (i > 0) Thread.Sleep(500);
+            try { _single?.Dispose(); _single = new Mutex(true, @"Local\ResetExplode.SingleInstance", out first); }
+            catch (UnauthorizedAccessException) { first = false; } // criado por outra instância com outro nível de permissão
+        }
 
         if (!first)
         {

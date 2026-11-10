@@ -14,6 +14,11 @@ COMO MEDIR
 2. Sessões › Benchmark CS2: escreva o nome do perfil (ex.: linha de base) e clique em CAPTURA CS2. Volte ao jogo, carregue o mapa de benchmark e rode.
 3. Repita 3 vezes por perfil (a primeira depois de abrir o jogo é aquecimento). Mude UMA coisa por perfil e use COMPARAR.
 
+ATUALIZAÇÃO E PROBLEMAS
+- O app se atualiza sozinho: quando aparecer ATUALIZAR no alto da janela, clique (fora de uma gravação).
+- O ícone de inseto no alto da janela manda um relato de problema (issue no GitHub). Precisa de um token do GitHub
+  só com permissão de Issues no repositório resetexplode, colado uma vez.
+
 OBSERVAÇÕES
 - O app nunca toca o processo do jogo (só ETW, sensores e arquivos). Só offline.
 - Configurações, sessões e backups ficam em %AppData%\ResetExplode.
