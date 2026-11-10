@@ -1,0 +1,25 @@
+name: Compilar
+
+# Branches de trabalho (tudo menos main): compila e sobe o .exe como artifact. Não cria release.
+on:
+  push:
+    branches-ignore: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Publicar (arquivo único, com o .NET embutido)
+        run: dotnet publish ResetExplode.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:DebugType=None -o dist -nologo
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ResetExplode-${{ github.ref_name }}
+          path: dist/ResetExplode.exe
