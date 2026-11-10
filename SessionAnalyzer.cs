@@ -143,6 +143,15 @@ public static class SessionAnalyzer
                                 $"espera do sistema em {Pct("Sistema")} (nem CPU nem GPU trabalhando: driver, interrupção, paginação ou sincronia)."));
         }
 
+        // 4a1) Onde as quedas aconteceram (eventos da cena, ex.: explosão)
+        if (r["quedas_eventos"] is JsonArray qev && qev.Count > 0)
+        {
+            var top = qev.OfType<JsonObject>().OrderByDescending(e => D(e, "pior_ms") ?? 0).Take(5).OrderBy(e => D(e, "t_s") ?? 0).ToList();
+            lines.Add(new(null, "Maiores quedas (instante na janela · quadro · pior frame): " + string.Join("; ", top.Select(e =>
+                $"{D(e, "t_s"):0.#} s · quadro {D(e, "quadro"):0} · {D(e, "pior_ms"):0.#} ms ({D(e, "fps_min"):0} fps)")) +
+                ". Quedas que se repetem no mesmo instante em todas as execuções são eventos da cena (explosão, fumaça), não travadas aleatórias."));
+        }
+
         // 4a2) Tabela do mapa de benchmark (VProf): onde o frame gasta tempo
         if (r["vprof"] is JsonObject vp && vp["linhas"] is JsonArray vrows)
         {

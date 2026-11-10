@@ -23,6 +23,8 @@ Versão pessoal do RESET EXPLODE, só para CS2 neste PC. Mede a estabilidade do 
   Xbox Game Bar entrou nos ajustes do Windows.
 - **Modo CS automático** (Otimização): quando o CS2 abre, de qualquer jeito, troca a área de trabalho para 1280x960, fecha o que não está na lista,
   limpa a RAM, para SysMain/Windows Search/Spooler/Windows Update, sobe a prioridade e liga o Alto desempenho; desfaz tudo quando o jogo fecha.
+- **Quedas por evento**: o laudo lista as maiores quedas com o instante, o número do quadro e o pior frame; a comparação mostra as quedas que se repetem no mesmo instante
+  em quase todas as execuções (eventos da cena, como a explosão da C4 do mapa), separadas das travadas aleatórias.
 - **Tabela do mapa de benchmark** (`[VProf]`): a captura lê o relatório inteiro (janela de frames, tabela por sistema), guarda em `vprof.txt` e alinha o 1% low à janela
   que o mapa analisou (os últimos N frames; o resto é aquecimento), para bater com o P1 do mapa. O laudo mostra o custo do servidor local do mapa e do Reflex.
 - **Causa de cada queda**: frame a frame pelo PresentMon, cada queda vira CPU, GPU ou "espera do sistema" (driver, interrupção, paginação);

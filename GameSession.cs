@@ -163,6 +163,7 @@ public sealed class GameSession : IDisposable
             ["engasgos"] = Stutters,
             ["desvio_padrao_ms"] = R(FrameMetrics.StdDev(_frameTimes)),
             ["quedas"] = drops.Count,
+            ["quedas_eventos"] = FrameMetrics.DropEvents(_frameTimes).Select(e => new { t_s = e.T, quadro = e.Frame, pior_ms = e.WorstMs, fps_min = e.MinFps, quadros = e.Frames }).ToList(),
             ["quedas_regularidade"] = FrameMetrics.RegularityScore(drops) is double reg ? R(reg) : null,
             ["tempo_em_primeiro_plano_pct"] = _seconds > 0 ? Math.Round(100.0 * _fgSeconds / _seconds) : null,
             ["limitador_pct_do_tempo"] = _limiters.OrderByDescending(kv => kv.Value)

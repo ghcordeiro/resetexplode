@@ -332,6 +332,13 @@ public partial class MainWindow
         foreach (var r in ra.Concat(rb).Where(x => !x.Valid))
             lines.Add($"inválida: {Path.GetFileName(r.Folder)} ({r.Invalid})");
 
+        foreach (var (name, runs) in new[] { (a, ra), (b, rb) })
+        {
+            var rep = ProfileComparer.RepeatedDrops(runs);
+            if (rep.Count > 0)
+                lines.Add($"{name}: quedas que se repetem no mesmo instante (eventos da cena): " +
+                          string.Join("; ", rep.Select(x => $"~{x.T:0.#} s (quadro ~{x.Frame}, pior {x.WorstMs:0.#} ms, em {x.Runs} de {x.Total})")));
+        }
         lines.AddRange(DriverLines(a, ra));
         lines.AddRange(DriverLines(b, rb));
         string? fa = ra.LastOrDefault(x => x.Valid)?.Folder, fb = rb.LastOrDefault(x => x.Valid)?.Folder;

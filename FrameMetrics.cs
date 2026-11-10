@@ -19,9 +19,32 @@ public static class FrameMetrics
     /// Instante (s desde o início) de cada queda: frame maior que <paramref name="factor"/> vezes a mediana do último 1 s.
     /// Sem o piso de 33,4 ms do "engasgo": a 300 fps uma queda para 100 fps (10 ms) também conta.
     /// </summary>
-    public static List<double> Drops(IReadOnlyList<float> frameMs, double factor = 2.5)
+    public static List<double> Drops(IReadOnlyList<float> frameMs, double factor = 2.5) =>
+        DropIndices(frameMs, factor).Select(d => d.T).ToList();
+
+    /// <summary>Uma "queda de cena": quedas vizinhas (menos de 0,5 s entre elas) juntas. <paramref name="Frame"/> = índice do pior frame na janela.</summary>
+    public sealed record DropEvent(double T, int Frame, double WorstMs, double MinFps, int Frames);
+
+    /// <summary>Agrupa as quedas em eventos (ex.: uma explosão) e devolve os maiores primeiro.</summary>
+    public static List<DropEvent> DropEvents(IReadOnlyList<float> frameMs, int max = 12)
     {
-        var drops = new List<double>();
+        var events = new List<DropEvent>();
+        var idx = DropIndices(frameMs, 2.5);
+        int i = 0;
+        while (i < idx.Count)
+        {
+            int j = i; int worst = idx[i].Index;
+            while (j + 1 < idx.Count && idx[j + 1].T - idx[j].T < 0.5) { j++; if (frameMs[idx[j].Index] > frameMs[worst]) worst = idx[j].Index; }
+            double w = frameMs[worst];
+            events.Add(new DropEvent(Math.Round(idx[i].T, 1), worst, Math.Round(w, 2), Math.Round(1000 / w, 0), j - i + 1));
+            i = j + 1;
+        }
+        return events.OrderByDescending(e => e.WorstMs).Take(max).OrderBy(e => e.T).ToList();
+    }
+
+    private static List<(double T, int Index)> DropIndices(IReadOnlyList<float> frameMs, double factor)
+    {
+        var drops = new List<(double T, int Index)>();
         int n = frameMs.Count;
         if (n < 20) return drops;
 
@@ -45,7 +68,7 @@ public static class FrameMetrics
                 threshold = factor * buffer[len / 2];
                 lastCalc = time[i];
             }
-            if (threshold > 0 && frameMs[i] > threshold) drops.Add(time[i] / 1000);
+            if (threshold > 0 && frameMs[i] > threshold) drops.Add((time[i] / 1000, i));
         }
         return drops;
     }

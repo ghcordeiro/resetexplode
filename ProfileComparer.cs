@@ -68,6 +68,42 @@ public static class ProfileComparer
         return (v.Count, rangePct, mean > 0 ? 100 * sd / mean : 0, v.Count >= MinRuns && rangePct <= 5);
     }
 
+    public sealed record RepeatedDrop(double T, int Runs, int Total, double WorstMs, int Frame);
+
+    /// <summary>
+    /// Quedas que se repetem no mesmo instante da passada em pelo menos 60% das execuções do perfil (mínimo 2): eventos da cena,
+    /// como a explosão da C4 do mapa de benchmark. Os instantes são relativos ao começo da janela analisada.
+    /// </summary>
+    public static List<RepeatedDrop> RepeatedDrops(IEnumerable<RunRecord> runs)
+    {
+        var list = runs.Where(r => r.Valid && !r.WarmUp).ToList();
+        var pts = new List<(int Run, double T, double Worst, int Frame)>();
+        for (int i = 0; i < list.Count; i++)
+            try
+            {
+                using var doc = System.Text.Json.JsonDocument.Parse(System.IO.File.ReadAllText(System.IO.Path.Combine(list[i].Folder, "resumo.json")));
+                if (!doc.RootElement.TryGetProperty("quedas_eventos", out var arr) || arr.ValueKind != System.Text.Json.JsonValueKind.Array) continue;
+                foreach (var e in arr.EnumerateArray())
+                    pts.Add((i, e.GetProperty("t_s").GetDouble(), e.GetProperty("pior_ms").GetDouble(), e.TryGetProperty("quadro", out var q) ? q.GetInt32() : 0));
+            }
+            catch { }
+        int need = Math.Max(2, (int)Math.Ceiling(list.Count * 0.6));
+        var result = new List<RepeatedDrop>();
+        var sorted = pts.OrderBy(p => p.T).ToList();
+        int k = 0;
+        while (k < sorted.Count)
+        {
+            int m = k;
+            while (m + 1 < sorted.Count && sorted[m + 1].T - sorted[k].T <= 1.5) m++;
+            var cluster = sorted.Skip(k).Take(m - k + 1).ToList();
+            int distinct = cluster.Select(c => c.Run).Distinct().Count();
+            if (distinct >= need)
+                result.Add(new RepeatedDrop(Math.Round(cluster.Average(c => c.T), 1), distinct, list.Count, Math.Round(cluster.Average(c => c.Worst), 1), (int)cluster.Average(c => c.Frame)));
+            k = m + 1;
+        }
+        return result;
+    }
+
     /// <summary>As métricas principais de dois perfis, só com execuções válidas e fora do aquecimento.</summary>
     public static List<Comparison> CompareRuns(IEnumerable<RunRecord> baseline, IEnumerable<RunRecord> candidate)
     {
