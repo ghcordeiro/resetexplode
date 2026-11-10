@@ -92,6 +92,7 @@ public partial class MainWindow
             var gpuProbe = new GpuProcessProbe();
             _probes = new List<SessionProbe> { new GameProcessProbe(), _pcieProbe, gpuProbe, new BackgroundProcessesProbe(gpuProbe), new NetworkProbe(), new PresentMonProbe(),
                                              new InputProbe(_settings.SessionKeyboard) };
+            if (ChkBenchDeep.IsChecked == true) _probes.Add(new DpcProbe());
 
             _sessionRows = _monitor.Rows.ToList();
             var session = new GameSession(GameName(proc, exe), exe, pid, _sessionRows.Select(SensorColumn).ToList(),

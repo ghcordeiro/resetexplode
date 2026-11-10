@@ -1670,6 +1670,7 @@
                                 </Grid>
                                 <CheckBox x:Name="ChkBenchWarmup" Content="Esta captura é aquecimento (fica fora da comparação)" Margin="0,0,0,6"/>
                                 <CheckBox x:Name="ChkBenchAltTab" Content="Teste de alt-tab: o alt-tab não invalida a captura (use um perfil só para isso)" Margin="0,0,0,10"/>
+                                <CheckBox x:Name="ChkBenchDeep" Content="Diagnóstico profundo (DPC/ISR do kernel): acha o driver que atrasa o sistema; pesa no jogo e a captura não entra em comparações" Margin="0,0,0,10"/>
                                 <StackPanel Orientation="Horizontal">
                                     <Button x:Name="BtnCapture" Style="{StaticResource PrimaryButton}" Content="CAPTURA CS2" Padding="14,7" Margin="0,0,8,0" Click="BtnCapture_Click"/>
                                     <Button Style="{StaticResource OutlineButton}" Content="PERFIL MANUAL (BIOS)" Padding="14,7" Click="BtnManualProfile_Click"

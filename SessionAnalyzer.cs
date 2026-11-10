@@ -142,6 +142,17 @@ public static class SessionAnalyzer
                                           "Em tela cheia exclusiva, cada alt-tab troca o modo do monitor; teste janela sem borda com a área de trabalho no mesmo tamanho (aba Biblioteca).")
                 : new(null, $"Alt-tab: {altMed / 1000:0.#} s para o jogo recuperar o FPS ({alts.Count} voltas, resolução de 1 s)."));
 
+        // 4c) Diagnóstico profundo (DPC/ISR)
+        if (r["dpc_isr"] is JsonObject dpc)
+        {
+            if (dpc["erro"] != null) lines.Add(new(AvisoNivel.Dica, "Diagnóstico profundo não rodou: " + dpc["erro"]));
+            else if (dpc["drivers"] is JsonArray drv && drv.Count > 0)
+                lines.Add(new(AvisoNivel.Atencao, $"{D(dpc, "picos"):0} atrasos de DPC acima de {D(dpc, "limite_ms"):0.#} ms. Drivers que mais atrasaram: " +
+                    string.Join("; ", drv.OfType<JsonObject>().Take(3).Select(d => $"{d["driver"]} ({D(d, "picos"):0} picos, até {D(d, "maximo_us"):0} µs)")) +
+                    ". Atualize ou desative o dispositivo do primeiro (placa de rede, áudio e USB são os suspeitos comuns); os instantes estão em dpc.csv."));
+            else lines.Add(new(null, "Diagnóstico profundo: nenhum DPC/ISR passou de 0,5 ms."));
+        }
+
         // 5) Rede
         if (r["rede"] is JsonObject net)
         {
