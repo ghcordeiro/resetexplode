@@ -56,7 +56,10 @@ public static class SystemTimers
                 return $"AMD Chipset Software {ver}{age}.";
             }
         }
-        return "AMD Chipset Software não encontrado: sem os planos de energia do Ryzen. Instale em amd.com/support (Chipsets › AMD B550).";
+        bool ryzenPlan = Run("powercfg.exe", "/list").Contains("Ryzen", StringComparison.OrdinalIgnoreCase);
+        using var ppm = Registry.LocalMachine.OpenSubKey(@"SYSTEM\CurrentControlSet\Services\amdppm");
+        return $"AMD Chipset Software não encontrado nos programas instalados (planos de energia Ryzen: {(ryzenPlan ? "existem" : "NÃO existem")}; driver amdppm: {(ppm != null ? "presente" : "ausente")}). " +
+               "Sem ele o Windows usa o gerenciamento de energia genérico no Ryzen. Instale em amd.com/support (Chipsets › AMD B550) e meça como passo da matriz.";
     }
 
     public static string Bcd() => Run("bcdedit.exe", "/enum {current}");

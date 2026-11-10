@@ -117,13 +117,14 @@ public static class CsProfile
     private static Tweak ServicesTweak() => new()
     {
         Id = "cs.services", Title = "Serviços que o CS não usa (impressão, telemetria, Xbox, mapas, Bluetooth…)",
-        Description = "Desativa " + string.Join(", ", ServicesToDisable) + ". Os que o seu Windows não tem são ignorados. Nada é apagado.",
+        Description = "Desativa " + string.Join(", ", ServicesToDisable) + ". Os que o seu Windows não tem são ignorados; os que o Windows protege contra alteração são pulados. Nada é apagado.",
         Effect = "Menos serviços e consultas de rede em segundo plano. Sem impressão e sem Bluetooth até restaurar.",
         NeedsRestart = true,
         Read = () =>
         {
-            var present = ServicesToDisable.Where(Exists).ToList();
-            return present.Count > 0 && present.All(n => WindowsTweaks.ReadDword(Registry.LocalMachine, Svc + n, "Start") == 4);
+            // Serviço protegido (o Windows nega a escrita e ele não está desativado) não conta: o interruptor não pode depender do que o app não consegue mudar.
+            var present = ServicesToDisable.Where(Exists).Where(n => StartOf(n) == 4 || CanWrite(n)).ToList();
+            return present.Count > 0 && present.All(n => StartOf(n) == 4);
         },
         Write = (on, s) =>
         {
@@ -133,19 +134,61 @@ public static class CsProfile
                 if (!s.TweakBackup.ContainsKey("cs.svc." + n))
                     s.TweakBackup["cs.svc." + n] = WindowsTweaks.ReadDword(Registry.LocalMachine, Svc + n, "Start")?.ToString() ?? "<ausente>";
             s.Save();
+            var skipped = new List<string>();
             foreach (var n in present)
             {
-                WindowsTweaks.SetDword(s, "cs.svc." + n, Registry.LocalMachine, Svc + n, "Start", 4);
+                if (!DisableService(s, n)) { skipped.Add(n); continue; }
                 try { Process.Start(new ProcessStartInfo("sc.exe", $"stop \"{n}\"") { CreateNoWindow = true, UseShellExecute = false })?.Dispose(); } catch { }
             }
+            if (skipped.Count > 0) ErrorReporter.Log("serviços protegidos pelo Windows, pulados: " + string.Join(", ", skipped));
+            if (skipped.Count == present.Count && present.Count > 0) throw new InvalidOperationException("o Windows negou a alteração de todos os serviços (" + string.Join(", ", skipped) + ")");
         },
         Restore = RestoreServices,
     };
 
+    private static int? StartOf(string svc) => WindowsTweaks.ReadDword(Registry.LocalMachine, Svc + svc, "Start");
+
+    /// <summary>A chave do serviço aceita escrita? Alguns (ex.: TrkWks) são do TrustedInstaller e negam até para o administrador.</summary>
+    private static bool CanWrite(string svc)
+    {
+        try { using var k = Registry.LocalMachine.OpenSubKey(Svc + svc, writable: true); return k != null; }
+        catch { return false; }
+    }
+
+    /// <summary>Desativa pelo registro; se o Windows negar, tenta pelo gerenciador de serviços (sc config). <c>false</c> se nenhum dos dois conseguiu.</summary>
+    private static bool DisableService(AppSettings s, string svc)
+    {
+        try { WindowsTweaks.SetDword(s, "cs.svc." + svc, Registry.LocalMachine, Svc + svc, "Start", 4); return true; }
+        catch (Exception ex) when (ex is UnauthorizedAccessException or System.Security.SecurityException) { }
+        return ScConfig(svc, "disabled");
+    }
+
+    private static bool ScConfig(string svc, string mode)
+    {
+        try
+        {
+            var psi = new ProcessStartInfo("sc.exe", $"config \"{svc}\" start= {mode}") { CreateNoWindow = true, UseShellExecute = false, RedirectStandardOutput = true };
+            using var p = Process.Start(psi)!;
+            p.StandardOutput.ReadToEnd();
+            p.WaitForExit(15000);
+            return p.ExitCode == 0;
+        }
+        catch { return false; }
+    }
+
     private static void RestoreServices(AppSettings s)
     {
         foreach (var n in ServicesToDisable)
-            WindowsTweaks.RestoreDword(s, "cs.svc." + n, Registry.LocalMachine, Svc + n, "Start");
+        {
+            string key = "cs.svc." + n;
+            if (s.TweakBackup.GetValueOrDefault(key) is not string prev || prev == "<ausente>") continue;
+            try { WindowsTweaks.RestoreDword(s, key, Registry.LocalMachine, Svc + n, "Start"); }
+            catch (Exception ex) when (ex is UnauthorizedAccessException or System.Security.SecurityException)
+            {
+                string? mode = prev switch { "0" => "boot", "1" => "system", "2" => "auto", "3" => "demand", "4" => "disabled", _ => null };
+                if (mode != null) ScConfig(n, mode);
+            }
+        }
     }
 
     private static bool Exists(string service)

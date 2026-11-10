@@ -311,8 +311,12 @@ public static class WindowsTweaks
     /// <summary>Índice AC atual. A saída do powercfg é traduzida, mas o primeiro número 0x... é sempre o valor AC.</summary>
     internal static int? PowerIndex(string sub, string setting)
     {
-        var m = System.Text.RegularExpressions.Regex.Match(PowerCfg($"/q SCHEME_CURRENT {sub} {setting}"), @"0x([0-9a-fA-F]{8})");
-        return m.Success ? Convert.ToInt32(m.Groups[1].Value, 16) : null;
+        // Configurações com faixa (ex.: % de núcleos) listam "mínimo", "máximo" e "incremento" em hexadecimal ANTES dos índices atuais. Os dois últimos
+        // 0x... da saída são sempre o índice AC e o DC (em qualquer idioma do Windows), então o AC é o penúltimo.
+        var ms = System.Text.RegularExpressions.Regex.Matches(PowerCfg($"/q SCHEME_CURRENT {sub} {setting}"), @"0x([0-9a-fA-F]{8})");
+        if (ms.Count == 0) return null;
+        var m = ms.Count >= 2 ? ms[^2] : ms[^1];
+        return Convert.ToInt32(m.Groups[1].Value, 16);
     }
 
     internal static void SetPowerIndex(AppSettings s, string backupKey, string sub, string setting, int value)

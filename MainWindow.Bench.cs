@@ -83,6 +83,13 @@ public partial class MainWindow
         _captureArmed = true;
         BtnCapture.Content = "CANCELAR CAPTURA";
         CsBenchStatus.Text = "Captura armada. Volte ao CS2: ela começa quando o jogo estiver em primeiro plano.";
+        // Experimentos ligados (HAGS, timer, MPO, dynamic tick, prioridade...) mudam o resultado: avisa para o perfil não misturar duas mudanças.
+        try
+        {
+            var on = _tweaks.Where(t => t.Id.StartsWith("exp.") || t.Id == "hags").Where(t => { try { return t.Read() == true; } catch { return false; } }).Select(t => t.Title).ToList();
+            if (on.Count > 0) CsBenchStatus.Text += $" ATENÇÃO: experimentos ligados agora: {string.Join("; ", on)}. Se não fazem parte deste perfil, desligue-os em Otimização e reinicie se pedir.";
+        }
+        catch { }
         return null;
     }
 
