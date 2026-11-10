@@ -14,6 +14,23 @@ Atualizada em 10/11/2026.
 | 5 | **Paginação nas quedas** — páginas lidas do disco por segundo (contador `Memory\Pages Input/sec`) e lista em espera, cruzadas com as quedas | É o sinal direto da hipótese "16 GB não bastam". Hoje só há a RAM usada | P |
 | 6 | **Veredito de compra** — painel com a regra do PRD aplicada aos dados: 5500X3D só se, depois dos ajustes grátis, o 1% low seguir abaixo de 200 fps com gargalo de CPU; 32 GB só se a RAM passar de 85% com os programas do dia a dia | Responde a pergunta original (comprar ou não) com números | P |
 
+## Otimizador do Windows: o que falta
+
+O que já existe: plano de energia, núcleos sem estacionamento ("unpark"), serviços desnecessários, inicialização só com o essencial, tarefas de
+telemetria, Widgets/Copilot/dicas, Modo de Jogo, Game DVR, USB/PCIe/placa de rede sem economia, aceleração do mouse, MMCSS, limpeza da memória em
+espera (como o ISLC), fechar programas e troca da área de trabalho para 1280x960 quando o jogo é aberto pelo JOGAR.
+
+| # | Ideia | Por que importa | Esforço |
+| --- | --- | --- | --- |
+| 16 | **Modo CS automático** — quando o `cs2.exe` abre (de qualquer jeito, não só pelo JOGAR): troca a resolução da área de trabalho, fecha o que não está na lista permitida, limpa a RAM, para por enquanto SysMain, Windows Search, Spooler e Windows Update, sobe a prioridade; desfaz tudo quando o jogo fecha | É o "script pré-jogo" sem mexer no Windows de forma permanente. O que só pesa durante o jogo fica parado só durante o jogo | M |
+| 17 | **Overlays e aceleração** — verificar e oferecer desligar: aceleração de hardware e overlay do Discord, overlay da Steam, overlay/gravação instantânea da NVIDIA, Xbox Game Bar | Esses roubam GPU, RAM e às vezes frames do jogo. Ganho real e medível, ao contrário da maioria dos ajustes de registro | P |
+| 18 | **Remover apps pré-instalados (debloat)** — lista dos apps da Store que vêm com o Windows (Clipchamp, Notícias, Clima, Solitaire, Teams pessoal, Xbox, Dicas…) com remoção para o usuário e reinstalação pela Store | Libera disco e tira tarefas de segundo plano. Ganho de fps pequeno; vale pela limpeza | M |
+| 19 | **Experimentos de sistema (medir antes de manter)** — `bcdedit /set disabledynamictick yes`, modo MSI da GPU, `Win32PrioritySeparation`. Cada um vira um perfil na matriz e só fica se ganhar além do ruído | São os únicos ajustes "de Instagram" com base técnica; o efeito varia de PC para PC | M |
+
+**Não entram:** desligar VBS/Integridade de Memória, Defender ou mitigações de CPU (FACEIT exige ou é risco), Windows modificados tipo Atlas/ReviOS
+(quebram atualização e anti-cheat), ajustes de rede como TcpAckFrequency/Nagle (o CS2 usa UDP), "limpadores de RAM" que esvaziam a memória dos
+programas o tempo todo (pioram), e afinidade de núcleos no 5700X (um CCD só, sem ganho).
+
 ## Prioridade média
 
 | # | Ideia | Por que importa | Esforço |
