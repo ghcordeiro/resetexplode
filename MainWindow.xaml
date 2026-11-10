@@ -1106,7 +1106,10 @@
                                     <TextBlock x:Name="LAffinityInfo" Foreground="{DynamicResource Faint}" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,10"/>
                                     <CheckBox x:Name="LChkPlan" Content="Plano de energia Alto desempenho enquanto joga (volta ao normal depois)" Margin="0,0,0,10" Click="LProfile_Changed"/>
                                     <CheckBox x:Name="LChkGpu" Content="Forçar a placa de vídeo dedicada (configuração gráfica do Windows)" Margin="0,0,0,10" Click="LProfile_Changed"/>
-                                    <CheckBox x:Name="LChkFso" Content="Desativar otimizações de tela cheia do Windows" Margin="0,0,0,12" Click="LProfile_Changed"/>
+                                    <CheckBox x:Name="LChkFso" Content="Desativar otimizações de tela cheia do Windows" Margin="0,0,0,6" Click="LProfile_Changed"/>
+                                    <CheckBox x:Name="LChkDesk" Content="Área de trabalho do monitor principal em 1280x960 enquanto o jogo roda (para janela sem borda sem alt-tab lento)"
+                                              ToolTip="Troca o modo do monitor principal ao abrir pelo JOGAR e devolve ao fechar o jogo. Se o app fechar no meio, devolve na próxima abertura."
+                                              Margin="0,0,0,12" Click="LProfile_Changed"/>
                                     <TextBlock x:Name="LExeText" Foreground="{DynamicResource Faint}" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,8"/>
                                     <WrapPanel>
                                         <Button Style="{StaticResource OutlineButton}" Content="ESCOLHER O .EXE" Padding="14,8" Margin="0,0,8,0" Click="BtnPickExe_Click"/>
@@ -1665,7 +1668,8 @@
                                     <TextBox x:Name="SessProfile" Tag="Perfil de teste (ex.: linha de base)" Margin="0,0,8,0"/>
                                     <TextBox x:Name="TxtBenchSeconds" Grid.Column="1" Tag="segundos" ToolTip="Duração em segundos. Vazio: termina quando o mapa imprime o resumo (ou em 10 min)."/>
                                 </Grid>
-                                <CheckBox x:Name="ChkBenchWarmup" Content="Esta captura é aquecimento (fica fora da comparação)" Margin="0,0,0,10"/>
+                                <CheckBox x:Name="ChkBenchWarmup" Content="Esta captura é aquecimento (fica fora da comparação)" Margin="0,0,0,6"/>
+                                <CheckBox x:Name="ChkBenchAltTab" Content="Teste de alt-tab: o alt-tab não invalida a captura (use um perfil só para isso)" Margin="0,0,0,10"/>
                                 <StackPanel Orientation="Horizontal">
                                     <Button x:Name="BtnCapture" Style="{StaticResource PrimaryButton}" Content="CAPTURA CS2" Padding="14,7" Margin="0,0,8,0" Click="BtnCapture_Click"/>
                                     <Button Style="{StaticResource OutlineButton}" Content="PERFIL MANUAL (BIOS)" Padding="14,7" Click="BtnManualProfile_Click"
@@ -1690,6 +1694,7 @@
                                 </Grid>
                                 <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
                                     <Button Style="{StaticResource PrimaryButton}" Content="COMPARAR" Padding="14,7" Margin="0,0,8,0" Click="BtnCompareProfiles_Click"/>
+                                    <Button Style="{StaticResource OutlineButton}" Content="RELATÓRIO HTML" Padding="14,7" Click="BtnProfileReport_Click"/>
                                 </StackPanel>
                                 <ItemsControl x:Name="BenchCompareLines" Margin="0,10,0,0">
                                     <ItemsControl.ItemTemplate>

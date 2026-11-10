@@ -30,6 +30,12 @@ public static class SessionAnalyzer
         string resumoPath = Path.Combine(folder, "resumo.json");
         if (!File.Exists(resumoPath)) return null;
         var resumo = JsonNode.Parse(File.ReadAllText(resumoPath))!.AsObject();
+        var alt = AltTabTimer.MeasureFolder(folder);
+        if (alt.Count > 0)
+        {
+            resumo["alttab_ms"] = new JsonArray(alt.Select(x => (JsonNode?)JsonValue.Create(Math.Round(x))).ToArray());
+            resumo["alttab_mediana_ms"] = Math.Round(AltTabTimer.Median(alt));
+        }
         var laudo = Analyze(folder, resumo);
         resumo["laudo"] = new JsonObject
         {
@@ -128,6 +134,13 @@ public static class SessionAnalyzer
             if (hz is int h4 && D(exib, "fps_exibido_medio") is double fe && fe > h4 * 1.15 && (D(exib, "tearing_permitido_pct") ?? 0) > 50)
                 lines.Add(new(AvisoNivel.Dica, $"FPS ({fe:0}) bem acima da taxa do monitor ({h4} Hz) e com tearing: limitar a ~{h4 - 3} FPS reduz calor e consumo; com G-Sync/FreeSync, também a latência."));
         }
+
+        // 4b) Alt-tab: tempo para o jogo voltar ao ritmo normal
+        if (r["alttab_ms"] is JsonArray alts && alts.Count > 0 && D(r, "alttab_mediana_ms") is double altMed)
+            lines.Add(altMed >= 2000
+                ? new(AvisoNivel.Atencao, $"Alt-tab lento: o jogo levou {altMed / 1000:0.#} s (mediana de {alts.Count} voltas) para recuperar o FPS. " +
+                                          "Em tela cheia exclusiva, cada alt-tab troca o modo do monitor; teste janela sem borda com a área de trabalho no mesmo tamanho (aba Biblioteca).")
+                : new(null, $"Alt-tab: {altMed / 1000:0.#} s para o jogo recuperar o FPS ({alts.Count} voltas, resolução de 1 s)."));
 
         // 5) Rede
         if (r["rede"] is JsonObject net)

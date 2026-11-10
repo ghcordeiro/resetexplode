@@ -10,7 +10,7 @@ namespace ResetExplode;
 /// </summary>
 public partial class MainWindow
 {
-    private bool _benchActive, _benchForce, _benchLostFocus, _benchAntiCheat, _benchWarmup, _benchOverlayWasOn;
+    private bool _benchAltTab, _benchActive, _benchForce, _benchLostFocus, _benchAntiCheat, _benchWarmup, _benchOverlayWasOn;
     private string? _benchProfile;
     private (double Avg, double P1)? _benchVProf;
     private LogTail? _benchTail;
@@ -87,6 +87,7 @@ public partial class MainWindow
 
         _benchProfile = profile;
         _benchWarmup = ChkBenchWarmup.IsChecked == true;
+        _benchAltTab = ChkBenchAltTab.IsChecked == true;
         _benchLostFocus = false;
         _benchVProf = null;
         _benchSecs = 0;
@@ -109,7 +110,7 @@ public partial class MainWindow
     {
         if (!_benchActive) return;
         _benchSecs++;
-        if (_benchSecs > 1 && ForegroundPid() != s.Pid) _benchLostFocus = true;
+        if (_benchSecs > 1 && !_benchAltTab && ForegroundPid() != s.Pid) _benchLostFocus = true;
         if (_benchSecs % 5 == 0 && AntiCheatGuard.IsRunning()) _benchAntiCheat = true;
 
         if (_benchEnd is DateTime end && DateTime.Now >= end) { StopSession("captura terminada"); return; }
@@ -227,5 +228,32 @@ public partial class MainWindow
             lines.Add(changes.Count > 0 ? "O que mudou no PC: " + string.Join("; ", changes) + "." : "Nenhuma mudança de configuração detectada entre as duas últimas execuções.");
         }
         BenchCompareLines.ItemsSource = lines;
+    }
+
+    /// <summary>Gera o HTML da comparação atual (as duas listas de perfis) e abre no navegador.</summary>
+    private void BtnProfileReport_Click(object sender, RoutedEventArgs e)
+    {
+        if (CmbProfA.SelectedItem is not string a || CmbProfB.SelectedItem is not string b)
+        {
+            BenchCompareLines.ItemsSource = new[] { "Escolha os dois perfis para gerar o relatório." };
+            return;
+        }
+        try
+        {
+            var ra = SessionProfile.Runs(a); var rb = SessionProfile.Runs(b);
+            var rows = ProfileComparer.CompareRuns(ra, rb);
+            string? fa = ra.LastOrDefault(x => x.Valid)?.Folder, fb = rb.LastOrDefault(x => x.Valid)?.Folder;
+            var diff = fa != null && fb != null ? SessionAnalyzer.ConfigChanges(fa, fb) : new List<string>();
+            var sug = new List<Suggestion>();
+            if (fb != null && DiagnosisRules.FromSession(fb) is { } facts) sug = DiagnosisRules.Evaluate(facts);
+            string html = ProfileReport.Build(a, b, rows, fa != null ? ProfileReport.ReadFrames(fa) : new List<float>(),
+                                              fb != null ? ProfileReport.ReadFrames(fb) : new List<float>(), diff, sug);
+            string dir = Path.Combine(AppSettings.Folder, "relatorios");
+            Directory.CreateDirectory(dir);
+            string path = Path.Combine(dir, $"{SessionProfile.Normalize(a)}_vs_{SessionProfile.Normalize(b)}_{DateTime.Now:yyyyMMdd_HHmmss}.html");
+            File.WriteAllText(path, html, new System.Text.UTF8Encoding(false));
+            ShellRunner.OpenUrl(path);
+        }
+        catch (Exception ex) { CsBenchStatus.Text = $"Não foi possível gerar o relatório: {ex.Message}"; }
     }
 }

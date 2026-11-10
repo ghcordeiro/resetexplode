@@ -6,7 +6,7 @@ namespace ResetExplode;
 
 /// <summary>Uma execução de um perfil de teste, lida da pasta da sessão.</summary>
 public sealed record RunRecord(string Folder, bool Valid, bool WarmUp, double Low1Fps, double Low01Fps, double AvgFps,
-                               double StdDevMs, int Drops, string? Invalid);
+                               double StdDevMs, int Drops, double AltTabMs, string? Invalid);
 
 /// <summary>
 /// Perfil de teste ("linha de base", "fps_max 240"...): o nome é gravado em perfil.txt assim que a sessão começa
@@ -69,7 +69,7 @@ public static class SessionProfile
             if (!string.Equals(Read(dir), profile, StringComparison.OrdinalIgnoreCase)) continue;
             DateTime when = Directory.GetCreationTime(dir);
             string resumo = Path.Combine(dir, "resumo.json");
-            if (!File.Exists(resumo)) { list.Add((when, new RunRecord(dir, false, false, 0, 0, 0, 0, 0, "sem resumo"))); continue; }
+            if (!File.Exists(resumo)) { list.Add((when, new RunRecord(dir, false, false, 0, 0, 0, 0, 0, 0, "sem resumo"))); continue; }
             try
             {
                 using var doc = JsonDocument.Parse(File.ReadAllText(resumo));
@@ -81,9 +81,9 @@ public static class SessionProfile
                 bool valid = B("valida", true) && D("frames") > 0;
                 if (D("frames") <= 0) reason ??= "sem quadros";
                 list.Add((when, new RunRecord(dir, valid, B("aquecimento", false), D("low_1pct_fps"), D("low_01pct_fps"), D("fps_medio"),
-                    D("desvio_padrao_ms"), (int)D("quedas"), valid ? null : reason)));
+                    D("desvio_padrao_ms"), (int)D("quedas"), D("alttab_mediana_ms"), valid ? null : reason)));
             }
-            catch { list.Add((when, new RunRecord(dir, false, false, 0, 0, 0, 0, 0, "resumo ilegível"))); }
+            catch { list.Add((when, new RunRecord(dir, false, false, 0, 0, 0, 0, 0, 0, "resumo ilegível"))); }
         }
         return list.OrderBy(x => x.When).Select(x => x.Run).ToList();
     }

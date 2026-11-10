@@ -153,6 +153,7 @@ public static class GameLauncher
     public static async Task RunAsync(LibGame g, GameProfile p, Action<string> status, Action<string> learnedExe, CancellationToken ct)
     {
         string? oldPlan = null;
+        DisplayMode.Mode? oldDesktop = null;
         var helpers = new List<(Process Proc, bool Close)>();
         var launched = new List<(HelperProgram H, DateTime Started)>();
         try
@@ -168,6 +169,13 @@ public static class GameLauncher
                     PowerCfg($"/setactive {HighPerformance}");
                 }
                 else oldPlan = null; // já estava em Alto desempenho: nada a restaurar
+            }
+
+            if (p.DeskSwitch && Regex.Match(p.DeskRes ?? "", @"^(\d+)x(\d+)$") is { Success: true } dm)
+            {
+                var (prev, err) = DisplayMode.SwitchPrimary(int.Parse(dm.Groups[1].Value), int.Parse(dm.Groups[2].Value));
+                oldDesktop = prev;
+                status(err != null ? $"Não troquei a área de trabalho: {err}." : prev != null ? $"Área de trabalho em {p.DeskRes} durante o jogo." : "Área de trabalho já está nessa resolução.");
             }
 
             string? exe = p.ExePath ?? g.ExePath ?? FindMainExe(g.InstallDir, g.Name);
@@ -249,6 +257,7 @@ public static class GameLauncher
         finally
         {
             if (oldPlan != null) { try { PowerCfg($"/setactive {oldPlan}"); } catch { } }
+            if (oldDesktop != null) { try { DisplayMode.Restore(oldDesktop); } catch { } }
             foreach (var (proc, close) in helpers)
             {
                 if (!close) continue;

@@ -79,6 +79,7 @@ public partial class MainWindow : Window
 
     public MainWindow()
     {
+        DisplayMode.RestorePending(); // o app pode ter fechado com a área de trabalho trocada para o jogo
         InitializeComponent();
         ThemeManager.Apply(_settings.LightTheme);
         UpdateThemeButton();

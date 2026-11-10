@@ -62,7 +62,7 @@ public static class ProfileComparer
         var a = baseline.Where(r => r.Valid && !r.WarmUp).ToList();
         var b = candidate.Where(r => r.Valid && !r.WarmUp).ToList();
         List<double> P(List<RunRecord> l, Func<RunRecord, double> f) => l.Select(f).ToList();
-        return new List<Comparison>
+        var rows = new List<Comparison>
         {
             Compare("1% low (fps)", P(a, r => r.Low1Fps), P(b, r => r.Low1Fps), true),
             Compare("0,1% low (fps)", P(a, r => r.Low01Fps), P(b, r => r.Low01Fps), true),
@@ -70,5 +70,10 @@ public static class ProfileComparer
             Compare("Desvio do frametime (ms)", P(a, r => r.StdDevMs), P(b, r => r.StdDevMs), false),
             Compare("Quedas", P(a, r => r.Drops), P(b, r => r.Drops), false),
         };
+        // Alt-tab só entra se as execuções tiveram alt-tab medido (a captura válida normalmente não tem: serve às gravações do dia a dia).
+        var altA = a.Where(r => r.AltTabMs > 0).Select(r => r.AltTabMs).ToList();
+        var altB = b.Where(r => r.AltTabMs > 0).Select(r => r.AltTabMs).ToList();
+        if (altA.Count > 0 && altB.Count > 0) rows.Add(Compare("Alt-tab (ms)", altA, altB, false));
+        return rows;
     }
 }

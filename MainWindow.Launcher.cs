@@ -124,6 +124,7 @@ public partial class MainWindow
         LChkPlan.IsChecked = p.HighPerfPlan;
         LChkGpu.IsChecked = p.GpuHigh;
         LChkFso.IsChecked = p.DisableFso;
+        LChkDesk.IsChecked = p.DeskSwitch;
         SetChip(LAffinityPanel, p.Affinity ?? "");
         SetChip(LModePanel, p.WinMode);
         SetChip(LResPanel, p.Res);
@@ -171,6 +172,7 @@ public partial class MainWindow
         _lp.HighPerfPlan = LChkPlan.IsChecked == true;
         _lp.GpuHigh = LChkGpu.IsChecked == true;
         _lp.DisableFso = LChkFso.IsChecked == true;
+        _lp.DeskSwitch = LChkDesk.IsChecked == true;
         _lp.Affinity = CheckedTag(LAffinityPanel) ?? "";
         _lp.WinMode = CheckedTag(LModePanel) ?? "default";
         _lp.Res = CheckedTag(LResPanel) ?? "default";

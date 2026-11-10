@@ -38,6 +38,9 @@ public sealed class GameProfile
     /// <summary>Último limite de FPS / baixa latência aplicados no perfil do driver NVIDIA (0/false = nada).</summary>
     public int NvFpsLimit { get; set; }
     public bool NvLowLatency { get; set; }
+    /// <summary>Troca a área de trabalho do monitor principal para <see cref="DeskRes"/> enquanto o jogo roda (janela sem borda sem alt-tab lento).</summary>
+    public bool DeskSwitch { get; set; }
+    public string DeskRes { get; set; } = "1280x960";
 }
 
 /// <summary>Jogo adicionado à mão (qualquer .exe).</summary>
