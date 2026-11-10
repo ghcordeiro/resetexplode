@@ -11,7 +11,7 @@
     <AssemblyName>ResetExplode</AssemblyName>
     <Product>RESET EXPLODE</Product>
     <Version>0.16.0</Version>
-    <!-- Sempre otimizado: o RESET BENCH e os stress tests precisam do JIT otimizado também em Debug -->
+    <!-- Sempre otimizado: as medições e os stress tests precisam do JIT otimizado também em Debug -->
     <Optimize>true</Optimize>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
@@ -23,22 +23,9 @@
     <Resource Include="Assets\logo-dark.png" />
   </ItemGroup>
 
-  <!-- Drivers seriais oficiais embutidos (RESET MAKER): cada pasta Drivers\<chip> vira recurso e é extraída na hora de instalar.
-       Para incluir outro, basta criar a pasta com o .inf/.cat/.sys e ligá-la em MakerDrivers.Chips (Bundle). -->
-  <ItemGroup>
-    <EmbeddedResource Include="Drivers\**\*" Exclude="Drivers\*.md;Drivers\*.txt" LogicalName="Drivers/%(RecursiveDir)%(Filename)%(Extension)" />
-  </ItemGroup>
-
   <!-- Ferramentas de terceiros embutidas (Tools\LEIA-ME.md): extraídas e conferidas por hash antes de rodar. -->
   <ItemGroup>
     <EmbeddedResource Include="Tools\**\*" Exclude="Tools\*.md" LogicalName="Tools/%(RecursiveDir)%(Filename)%(Extension)" />
-    <!-- Programa do testador de atraso (RESET MAKER › Atraso): o app grava o .ino para o usuário carregar no Arduino. -->
-    <EmbeddedResource Include="Arduino\**\*.ino" LogicalName="Arduino/%(RecursiveDir)%(Filename)%(Extension)" />
-  </ItemGroup>
-
-  <!-- iCUE SDK da Corsair (RESET INTEGRAÇÃO): se a DLL estiver em Native\, ela vai junto do .exe. Não é versionada no git. -->
-  <ItemGroup>
-    <None Include="Native\iCUESDK.x64_2019.dll" Condition="Exists('Native\iCUESDK.x64_2019.dll')" Link="iCUESDK.x64_2019.dll" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>
@@ -48,8 +35,6 @@
     <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.2" />
     <PackageReference Include="Vortice.D3DCompiler" Version="3.8.3" />
     <PackageReference Include="Vortice.Direct3D11" Version="3.8.3" />
-    <PackageReference Include="Vortice.Direct3D12" Version="3.8.3" />
-    <PackageReference Include="Vortice.Dxc" Version="3.8.3" />
   </ItemGroup>
 
 </Project>

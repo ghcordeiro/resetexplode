@@ -324,14 +324,14 @@ public static class DriverManager
 
     private static void VerifyPublisher(string path, string publisher)
     {
-        int trust = CorsairSdkInstaller.WinVerifyTrustFile(path);
+        int trust = SignatureCheck.WinVerifyTrustFile(path);
         if (trust != 0)
         {
             try { File.Delete(path); } catch { }
             throw new InvalidOperationException($"Assinatura digital inválida (0x{trust:X8}). O arquivo foi descartado.");
         }
-        string? org = CorsairSdkInstaller.SignerOrganization(path);
-        if (!CorsairSdkInstaller.SameOrganization(org, publisher))
+        string? org = SignatureCheck.SignerOrganization(path);
+        if (!SignatureCheck.SameOrganization(org, publisher))
         {
             try { File.Delete(path); } catch { }
             throw new InvalidOperationException($"O arquivo está assinado por outro fabricante ({org ?? "desconhecido"}). Foi descartado.");

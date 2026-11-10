@@ -111,7 +111,6 @@ public partial class MainWindow
             string? cpu = InfoValue("Processador"), gpuName = gpu?.Name, driver = nvml != IntPtr.Zero ? Nvml.DriverVersion() : null;
             string folder = session.Folder;
             var inputTest = _settings.LastInputTest;
-            var latency = _settings.LastLatency;
             string? affinityText = null;
             try
             {
@@ -125,7 +124,6 @@ public partial class MainWindow
                 var tweaksOn = WindowsTweaks.All().Where(t => { try { return t.Read() == true; } catch { return false; } }).Select(t => t.Title).ToList();
                 var ctx = SessionContextCollector.Collect(exe, hwnd, nvml, cpu, gpuName, driver, tweaksOn);
                 ctx.EntradaMedida = inputTest;
-                ctx.LatenciaMedida = latency;
                 ctx.Afinidade = affinityText;
                 try { ctx.Save(folder); } catch { }
                 return ctx;

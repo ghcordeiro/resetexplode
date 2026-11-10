@@ -30,7 +30,7 @@ public partial class MainWindow
     private void InitOc()
     {
         nint ocGpu = OcGpu;
-        OcGpuTitle.Text = ((_gpus.Count > 0) ? ("GPU · " + GameCatalog.ShortGpuName(_gpus[0].Name).ToUpperInvariant()) : "GPU");
+        OcGpuTitle.Text = ((_gpus.Count > 0) ? ("GPU · " + HardwareNames.ShortGpuName(_gpus[0].Name).ToUpperInvariant()) : "GPU");
         if (ocGpu == IntPtr.Zero)
         {
             OcGpuState.Text = "Ajustes disponíveis só para placas NVIDIA (via driver oficial).";
@@ -286,38 +286,6 @@ public partial class MainWindow
         GpuBurn burn = new GpuBurn();
         try
         {
-            if (cpu)
-            {
-                OcStatus.Text = "Medindo a nota da CPU (render multi-core)…";
-                BenchResult benchResult = await Task.Run(() => _bench.Run(Environment.ProcessorCount, TimeSpan.Zero, ct), ct);
-                if (!ct.IsCancellationRequested)
-                {
-                    cpuScore = benchResult.Score;
-                }
-            }
-            if (gpu && !ct.IsCancellationRequested)
-            {
-                OcStatus.Text = "Medindo a nota da GPU (cena de jogo, 30 s)…";
-                GpuGameBench gb = new GpuGameBench
-                {
-                    Duration = TimeSpan.FromSeconds(30.0),
-                    AdapterName = ((_gpus.Count > 0) ? _gpus[0].Name : "")
-                };
-                _gpuBenchActive = true;
-                using (ct.Register(gb.Cancel))
-                {
-                    GpuGameResult gpuGameResult = await Task.Factory.StartNew((Func<GpuGameResult>)gb.Run, CancellationToken.None, TaskCreationOptions.LongRunning, TaskScheduler.Default);
-                    if (gpuGameResult != null)
-                    {
-                        gpuScore = gpuGameResult.Score;
-                    }
-                    else if (!gb.Cancelled)
-                    {
-                        fail = "a cena de GPU falhou (" + gb.Error + ")";
-                    }
-                }
-                _gpuBenchActive = false;
-            }
             if (fail == null && !ct.IsCancellationRequested)
             {
                 if (cpu)
@@ -427,7 +395,6 @@ public partial class MainWindow
         {
             stress.Stop();
             burn.Stop();
-            _gpuBenchActive = false;
         }
         _ocRunning = false;
         BtnOcCheck.Content = "INICIAR VERIFICAÇÃO";
@@ -533,7 +500,7 @@ public partial class MainWindow
         bool flag = item.Contains("Gigabyte", StringComparison.OrdinalIgnoreCase);
         bool flag2 = item.Contains("ASUS", StringComparison.OrdinalIgnoreCase);
         bool flag3 = item.Contains("Micro-Star", StringComparison.OrdinalIgnoreCase) || item.Contains("MSI", StringComparison.OrdinalIgnoreCase);
-        string text = GameCatalog.ShortCpuName(_cpuName);
+        string text = HardwareNames.ShortCpuName(_cpuName);
         bool num = _cpuName.Contains("Ryzen", StringComparison.OrdinalIgnoreCase);
         string text2 = ((flag ? "Gigabyte" : (item.Split(' ').FirstOrDefault() ?? "")) + " " + item2).Trim();
         OcGuideTitle.Text = "GUIA: OVERCLOCK NA BIOS · " + text2.ToUpperInvariant() + " · " + text.ToUpperInvariant();

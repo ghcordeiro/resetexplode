@@ -5,7 +5,6 @@ using System.Text.Json;
 
 namespace ResetExplode;
 
-public sealed record BenchRun(DateTime Date, double? Multi, double? Single, bool Sustained, string Cpu);
 
 /// <summary>Resultado dos benchmarks de jogo (Test = "gpu", "sim" ou "mem"). Score é usado para a barra do histórico.</summary>
 public sealed record BenchRecord(DateTime Date, string Test, double Score, string Summary);
@@ -63,8 +62,6 @@ public sealed class AppSettings
 
     public string? HowManyFpsKeyProtected { get; set; }
 
-    // RESET BENCH: últimos resultados (mais recente primeiro)
-    public List<BenchRun> BenchRuns { get; set; } = new();
     public List<BenchRecord> BenchRecords { get; set; } = new();
 
     // RESET OTIMIZA: valores originais dos ajustes do Windows antes da primeira alteração ("<ausente>" = não existia)
@@ -80,8 +77,6 @@ public sealed class AppSettings
     /// <summary>Conta eventos do teclado durante as sessões (só a quantidade, nunca quais teclas). Desligado por padrão.</summary>
     public bool SessionKeyboard { get; set; }
     public SessionContext.TesteEntrada? LastInputTest { get; set; }
-    public LatencyRecord? LastLatency { get; set; }
-    public string? LatencyPort { get; set; }
     public Dictionary<string, GameProfile> GameProfiles { get; set; } = new();
     public List<CustomGame> CustomGames { get; set; } = new();
 

@@ -59,11 +59,6 @@ public partial class MainWindow
     /// <summary>Eventos já registrados antes desta sessão (resultados de benchmark e verificações salvos).</summary>
     private IEnumerable<DashEvent> SavedEvents()
     {
-        foreach (var r in _settings.BenchRuns)
-        {
-            if (r.Multi is double m) yield return new DashEvent("", "RESET BENCH", "Render · multi-core", $"{m:N0} pts", r.Date);
-            else if (r.Single is double s) yield return new DashEvent("", "RESET BENCH", "Render · single-core", $"{s:N0} pts", r.Date);
-        }
         foreach (var r in _settings.BenchRecords)
         {
             var (icon, title) = r.Test switch
@@ -92,7 +87,7 @@ public partial class MainWindow
 
     private void DashOption_Checked(object sender, RoutedEventArgs e) { if (DashChart != null) DrawDashChart(); }
     private void DashChart_SizeChanged(object sender, SizeChangedEventArgs e) => DrawDashChart();
-    private void DashBench_Click(object sender, RoutedEventArgs e) => NavBench.IsChecked = true;
+    private void DashBench_Click(object sender, RoutedEventArgs e) => NavSessions.IsChecked = true;
     private void DashOptimize_Click(object sender, RoutedEventArgs e) => NavOptimize.IsChecked = true;
 
     private void DashGo_Click(object sender, RoutedEventArgs e)
@@ -121,14 +116,14 @@ public partial class MainWindow
     {
         var rows = new List<DashComponent>
         {
-            new("", "Processador", GameCatalog.ShortCpuName(_cpuName),
+            new("", "Processador", HardwareNames.ShortCpuName(_cpuName),
                 F(_monitor.CpuTemperature, "0", " °C"), F(_monitor.CpuLoad, "0", " %"), F(CpuClockAvg(), "0", " MHz"),
                 F(_monitor.CpuPower, "0", " W"), "PageSensors"),
         };
         if (_gpus.Count > 0)
         {
             uint? clk = _gpus[0].NvmlHandle != IntPtr.Zero ? Nvml.Clock(_gpus[0].NvmlHandle, Nvml.ClockGraphics) : null;
-            rows.Add(new("", "Placa de vídeo", GameCatalog.ShortGpuName(_gpus[0].Name),
+            rows.Add(new("", "Placa de vídeo", HardwareNames.ShortGpuName(_gpus[0].Name),
                          F(MainGpuTemp(), "0", " °C"), F(MainGpuLoad(), "0", " %"), clk is uint c ? $"{c} MHz" : "—",
                          F(MainGpuPower(), "0", " W"), "PageGpu"));
         }
@@ -147,30 +142,33 @@ public partial class MainWindow
 
     private void UpdateDashScores()
     {
-        var runs = _settings.BenchRuns.Where(r => r.Multi != null).ToList();
-        if (runs.Count > 0)
+        // Última captura válida do benchmark do CS2 (qualquer perfil).
+        RunRecord? last = null; string? lastProfile = null;
+        try
         {
-            DashScore.Text = $"{runs[0].Multi:N0}";
-            DashScoreSub.Text = $"pts · render multi-core · {runs[0].Date:dd/MM HH:mm}";
-            if (runs.Count > 1)
-            {
-                double d = runs[0].Multi!.Value - runs[1].Multi!.Value;
-                DashScoreDelta.Text = d >= 0 ? $"▲ {d:N0}" : $"▼ {-d:N0}";
-            }
-            else DashScoreDelta.Text = "";
+            foreach (var prof in SessionProfile.AllProfiles())
+                if (SessionProfile.Runs(prof).LastOrDefault(r => r.Valid && !r.WarmUp) is { } r) { last = r; lastProfile = prof; break; }
         }
-        else { DashScore.Text = "—"; DashScoreDelta.Text = ""; DashScoreSub.Text = "rode o RESET BENCH para ter uma nota"; }
-
-        string Last(string test) => _settings.BenchRecords.FirstOrDefault(r => r.Test == test)?.Summary.Split('·')[0].Trim() ?? "—";
-        var single = _settings.BenchRuns.FirstOrDefault(r => r.Single != null)?.Single;
-        DashScores.ItemsSource = new[]
+        catch { }
+        if (last != null)
         {
-            new KeyValuePair<string, string>("Render single-core", single is double s ? $"{s:N0} pts" : "—"),
-            new KeyValuePair<string, string>("Cena de jogo (GPU)", Last("gpu")),
-            new KeyValuePair<string, string>("Simulação de jogo", Last("sim")),
-        };
-        DashCpuName.Text = GameCatalog.ShortCpuName(_cpuName);
-        DashGpuName.Text = _gpus.Count > 0 ? GameCatalog.ShortGpuName(_gpus[0].Name) : "—";
+            DashScore.Text = $"{last.Low1Fps:0}";
+            DashScoreDelta.Text = "";
+            DashScoreSub.Text = $"1% low (fps) · perfil \"{lastProfile}\" · {System.IO.Directory.GetCreationTime(last.Folder):dd/MM HH:mm}";
+            DashScores.ItemsSource = new[]
+            {
+                new KeyValuePair<string, string>("Fps médio", $"{last.AvgFps:0}"),
+                new KeyValuePair<string, string>("0,1% low", $"{last.Low01Fps:0}"),
+                new KeyValuePair<string, string>("Quedas", $"{last.Drops}"),
+            };
+        }
+        else
+        {
+            DashScore.Text = "—"; DashScoreDelta.Text = ""; DashScoreSub.Text = "grave um perfil em Sessões › Benchmark CS2";
+            DashScores.ItemsSource = null;
+        }
+        DashCpuName.Text = HardwareNames.ShortCpuName(_cpuName);
+        DashGpuName.Text = _gpus.Count > 0 ? HardwareNames.ShortGpuName(_gpus[0].Name) : "—";
     }
 
     // ---------------- gráfico de área ----------------
@@ -358,15 +356,6 @@ public partial class MainWindow
         if (gm != null) list.Add(Item(gm.IsOn, "Modo de Jogo ligado", "O Windows prioriza o jogo.", "Desligado: ligue em RESET OTIMIZA."));
         if (dvr != null) list.Add(Item(dvr.IsOn, "Gravação em segundo plano desligada", "O Game Bar não grava o tempo todo.",
                                        "O Game DVR está gravando: custa FPS."));
-
-        try
-        {
-            var (reserved, inUse) = UsbCleaner.ComStatus();
-            int stuck = reserved.Except(inUse).Count();
-            list.Add(Item(stuck == 0, "Portas COM livres", "Nenhum número COM preso.",
-                          $"{stuck} números presos por dispositivos antigos."));
-        }
-        catch { }
 
         _health = list;
         DashHealth.ItemsSource = _health;

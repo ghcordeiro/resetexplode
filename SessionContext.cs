@@ -34,8 +34,6 @@ public sealed class SessionContext
     public string? Afinidade { get; set; }
     /// <summary>Último teste avulso de mouse/teclado (aba Sessões).</summary>
     public TesteEntrada? EntradaMedida { get; set; }
-    /// <summary>Último teste de atraso com o testador (Arduino ou câmera), se houver.</summary>
-    public LatencyRecord? LatenciaMedida { get; set; }
     // ---- snapshot ampliado (benchmark CS2) ----
     public string? BiosVersao { get; set; }
     public string? BiosData { get; set; }

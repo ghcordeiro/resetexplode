@@ -94,7 +94,6 @@ public static class ReportBuilder
 
         // Resumo dos discos no topo (o que mais interessa de imediato)
         Section(sb, "Saúde dos discos", d.Disks);
-        Section(sb, "Bateria e energia", d.Power);
         Section(sb, "Teste de rede", d.Network);
 
         if (d.System.Count > 0)
