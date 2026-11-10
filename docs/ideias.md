@@ -73,7 +73,7 @@ Plano: `docs/superpowers/plans/2026-11-11-ideias.md`.
 
 ## Pendente
 
-- 7 Início automático da passada do mapa: precisa de um `console.log` real.
+- 7 Início automático da passada do mapa: a saída do fim do mapa já é lida por inteiro (tabela, janela de frames). Falta ver o TOPO do console (linhas de início) para marcar o começo.
 - 20 Aplicar o CO sozinho: precisa da sintaxe da linha de comando do PBO2 Tuner (rode `"PBO2 Tuner.exe" /?` ou veja o tópico do PJVol no overclock.net e me mande).
 - 21 Timings reais da RAM: ler o controlador de memória exige driver de kernel; nada confiável encontrado. Continua no PERFIL MANUAL (copie do ZenTimings).
 

@@ -143,6 +143,22 @@ public static class SessionAnalyzer
                                 $"espera do sistema em {Pct("Sistema")} (nem CPU nem GPU trabalhando: driver, interrupção, paginação ou sincronia)."));
         }
 
+        // 4a2) Tabela do mapa de benchmark (VProf): onde o frame gasta tempo
+        if (r["vprof"] is JsonObject vp && vp["linhas"] is JsonArray vrows)
+        {
+            double? Av(string name, string field) => vrows.OfType<JsonObject>().FirstOrDefault(x => x["nome"]?.ToString() == name) is { } o ? D(o, field) : null;
+            lines.Add(new(null, $"Mapa: FPS médio {D(vp, "avg"):0.#}, P1 {D(vp, "p1"):0.#}, janela de {D(vp, "intervalos"):0} s com {D(vp, "frames"):0} frames " +
+                                $"({D(vp, "excluidos"):0} frames excluídos pelo mapa). O 1% low desta captura usa só essa janela."));
+            if (Av("Server Simulation", "ativos_n") is double tickN && D(vp, "frames") is double tf && tf > 0 && Av("Server Simulation", "ativos_avg_ms") is double tickMs)
+                lines.Add(new(null, $"O mapa roda um servidor local: {tickN / tf * 100:0}% dos frames são frames de tick e custam ~{tickMs:0.#} ms a mais (Server Simulation). " +
+                                    "Numa partida online esse custo não existe: o 1% low do mapa é mais pessimista que o do jogo. Vale para comparar perfis, não como número absoluto."));
+            if (Av("FrameTotal", "todos_p99_ms") is double p99 && Av("Client Rendering", "todos_avg_ms") is double rend && Av("FrameTotal", "todos_avg_ms") is double tot)
+                lines.Add(new(null, $"Frame médio de {tot:0.##} ms (P99 {p99:0.##} ms). Renderização do cliente: {rend:0.##} ms ({rend / tot * 100:0}%); " +
+                                    $"pior frame de cada segundo: mediana {Av("FrameTotal", "max1s_p50_ms"):0.#} ms, P95 {Av("FrameTotal", "max1s_p95_ms"):0.#} ms."));
+            if (Av("LowLatencySleep", "todos_avg_ms") is double sleepMs && sleepMs >= 0.1)
+                lines.Add(new(null, $"Reflex ativo: o jogo dorme {sleepMs:0.##} ms por frame em média (até {Av("LowLatencySleep", "todos_p99_ms"):0.#} ms) para manter a fila da GPU vazia."));
+        }
+
         // 4b) Alt-tab: tempo para o jogo voltar ao ritmo normal
         if (r["alttab_ms"] is JsonArray alts && alts.Count > 0 && D(r, "alttab_mediana_ms") is double altMed)
             lines.Add(altMed >= 2000

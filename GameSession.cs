@@ -131,6 +131,14 @@ public sealed class GameSession : IDisposable
         if (_seconds % 10 == 0) { _frames.Flush(); _sensors.Flush(); _events.Flush(); }
     }
 
+    /// <summary>Fica só com os últimos <paramref name="n"/> frames (a janela que o mapa analisou). <c>false</c> se a captura tem menos frames que isso.</summary>
+    public bool TrimToLast(int n)
+    {
+        if (n <= 0 || _frameTimes.Count < n) return false;
+        if (_frameTimes.Count > n) _frameTimes.RemoveRange(0, _frameTimes.Count - n);
+        return true;
+    }
+
     /// <summary>Resumo dos frames até agora (sem fechar a sessão).</summary>
     public FrameSummary Preview() => Summarize(_frameTimes);
 

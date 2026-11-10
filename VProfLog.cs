@@ -23,6 +23,39 @@ public static class VProfLog
         return (N(m.Groups[1].Value), N(m.Groups[2].Value));
     }
 
+    public sealed record VProfRow(string Name, double AllAvg, double AllP99, int ActiveN, double ActiveAvg, double ActiveP99, double MaxP50, double MaxP95);
+    public sealed record VProfReport(int Frames, int Intervals, int Excluded, double? Avg, double? P1, List<VProfRow> Rows);
+
+    private static readonly Regex SummaryFrames = new(@"Summary of\s+(\d+)\s+frames and\s+(\d+)\s+1-second intervals\.?\s*(?:\((\d+)\s+frames excluded)?", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+    private static readonly Regex Row = new(@"^\s*(?:\[VProf\])?\s*([A-Za-z_][A-Za-z_ ]*?)\s+(-?\d+(?:[.,]\d+)?)\s+(-?\d+(?:[.,]\d+)?)\s+(\d+)\s+(-?\d+(?:[.,]\d+)?)\s+(-?\d+(?:[.,]\d+)?)\s+(-?\d+(?:[.,]\d+)?)\s+(-?\d+(?:[.,]\d+)?)\s+(\d+)\s+(-?\d+(?:[.,]\d+)?)\s+(-?\d+(?:[.,]\d+)?)\s*$", RegexOptions.Compiled);
+
+    /// <summary>
+    /// Relatório completo do mapa: "Summary of N frames and M 1-second intervals. (K frames excluded from analysis.)", a linha FPS e a tabela por sistema
+    /// (FrameTotal, Client Rendering, Server Simulation...). <c>null</c> se não há a linha de resumo de frames.
+    /// </summary>
+    public static VProfReport? ParseReport(IEnumerable<string> lines)
+    {
+        int frames = 0, intervals = 0, excluded = 0; double? avg = null, p1 = null; bool seen = false;
+        var rows = new List<VProfRow>();
+        static double N(string s) => double.Parse(s.Replace(',', '.'), CultureInfo.InvariantCulture);
+        foreach (var line in lines)
+        {
+            var m = SummaryFrames.Match(line);
+            if (m.Success)
+            {
+                seen = true; frames = int.Parse(m.Groups[1].Value); intervals = int.Parse(m.Groups[2].Value);
+                excluded = m.Groups[3].Success ? int.Parse(m.Groups[3].Value) : 0;
+                continue;
+            }
+            if (TryParseSummary(line) is { } f) { avg = f.Avg; p1 = f.P1; continue; }
+            var r = Row.Match(line);
+            if (r.Success && !r.Groups[1].Value.Contains("frames", StringComparison.OrdinalIgnoreCase))
+                rows.Add(new VProfRow(r.Groups[1].Value.Trim(), N(r.Groups[2].Value), N(r.Groups[3].Value), int.Parse(r.Groups[4].Value), N(r.Groups[5].Value),
+                                      N(r.Groups[6].Value), N(r.Groups[7].Value), N(r.Groups[8].Value)));
+        }
+        return seen ? new VProfReport(frames, intervals, excluded, avg, p1, rows) : null;
+    }
+
     /// <summary>console.log a partir do cs2.exe (…\game\bin\win64\cs2.exe → …\game\csgo\console.log).</summary>
     public static string? PathFromExe(string cs2Exe)
     {

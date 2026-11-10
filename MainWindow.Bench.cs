@@ -13,6 +13,8 @@ public partial class MainWindow
     private bool _benchAltTab, _benchActive, _benchForce, _benchLostFocus, _benchAntiCheat, _benchWarmup, _benchOverlayWasOn;
     private string? _benchProfile;
     private (double Avg, double P1)? _benchVProf;
+    private readonly List<string> _benchVLines = new();
+    private DateTime? _benchStopAt;
     private LogTail? _benchTail;
     private DateTime? _benchEnd;
     private int _benchSecs, _benchSeconds, _benchMaxMinutes;
@@ -21,7 +23,7 @@ public partial class MainWindow
     private int _armedPid;
 
     private sealed record CsBenchRun(string Profile, bool WarmUp, bool LostFocus, bool AntiCheat, (double Avg, double P1)? VProf,
-                                   Func<SessionContext>? Recollect, bool GameClosed);
+                                   Func<SessionContext>? Recollect, bool GameClosed, List<string> VLines);
 
     private static readonly string ManualProfilePath = Path.Combine(AppSettings.Folder, "perfil-manual.json");
 
@@ -154,6 +156,7 @@ public partial class MainWindow
         _benchAltTab = ChkBenchAltTab.IsChecked == true;
         _benchLostFocus = false;
         _benchVProf = null;
+        _benchVLines.Clear(); _benchStopAt = null;
         _benchSecs = 0;
         _benchAntiCheat = AntiCheatGuard.IsRunning();
         _benchEnd = manual && _benchSeconds > 0 ? DateTime.Now.AddSeconds(_benchSeconds) : null;
@@ -180,7 +183,12 @@ public partial class MainWindow
         if (_benchEnd is DateTime end && DateTime.Now >= end) { StopSession("captura terminada"); return; }
         if (_benchTail != null)
             foreach (var line in _benchTail.ReadNew())
-                if (VProfLog.TryParseSummary(line) is { } v) { _benchVProf = v; StopSession("o mapa terminou"); return; }
+            {
+                if (line.Contains("VProf", StringComparison.OrdinalIgnoreCase) && _benchVLines.Count < 300) _benchVLines.Add(line);
+                if (VProfLog.TryParseSummary(line) is { } v && _benchVProf == null) { _benchVProf = v; _benchStopAt = DateTime.Now.AddSeconds(4); } // a tabela vem logo depois da linha FPS
+                if (_benchVProf != null && line.Contains("VProfLite stopped", StringComparison.OrdinalIgnoreCase)) _benchStopAt = DateTime.Now;
+            }
+        if (_benchStopAt is DateTime stop && DateTime.Now >= stop) { StopSession("o mapa terminou"); return; }
         if (_benchMaxMinutes > 0 && s.Elapsed > TimeSpan.FromMinutes(_benchMaxMinutes)) StopSession($"limite de {_benchMaxMinutes} min da captura");
     }
 
@@ -189,7 +197,8 @@ public partial class MainWindow
     {
         if (!_benchActive) return null;
         var run = new CsBenchRun(_benchProfile!, _benchWarmup, _benchLostFocus, _benchAntiCheat, _benchVProf, _benchRecollect,
-                               reason.Contains("fechou", StringComparison.OrdinalIgnoreCase));
+                               reason.Contains("fechou", StringComparison.OrdinalIgnoreCase), _benchVLines.ToList());
+        _benchVLines.Clear(); _benchStopAt = null;
         _benchActive = false; _benchTail = null; _benchRecollect = null; _benchEnd = null;
         if (_benchOverlayWasOn) { ChkOverlay.IsChecked = true; _benchOverlayWasOn = false; }
         BtnCapture.Content = "CAPTURA CS2";
@@ -208,8 +217,26 @@ public partial class MainWindow
             try { ctxChanged = Fingerprint(bench.Recollect()) != Fingerprint(ctx); } catch { }
         bool pmLost = extra.TryGetValue("exibicao", out var ex) && ex?.GetType().GetProperty("erro") != null;
 
+        // O mapa analisa uma janela (N frames; o resto é aquecimento). Alinha a captura a ela: os últimos N frames, para o 1% low bater com o P1 do mapa.
+        var report = VProfLog.ParseReport(bench.VLines);
+        bool covered = true;
+        if (report != null && report.Frames > 0)
+        {
+            extra["frames_captura_total"] = s.FrameCount;
+            covered = s.TrimToLast(report.Frames);
+            extra["janela_quadros"] = report.Frames;
+            extra["vprof"] = new
+            {
+                frames = report.Frames, intervalos = report.Intervals, excluidos = report.Excluded, avg = report.Avg, p1 = report.P1,
+                linhas = report.Rows.Select(r => new { nome = r.Name, todos_avg_ms = r.AllAvg, todos_p99_ms = r.AllP99, ativos_n = r.ActiveN,
+                                                       ativos_avg_ms = r.ActiveAvg, ativos_p99_ms = r.ActiveP99, max1s_p50_ms = r.MaxP50, max1s_p95_ms = r.MaxP95 }).ToList(),
+            };
+        }
+        try { if (bench.VLines.Count > 0) File.WriteAllLines(Path.Combine(s.Folder, "vprof.txt"), bench.VLines); } catch { }
+
         var preview = s.Preview();
         string? invalid = RunValidator.Validate(new RunFacts(preview.Frames, s.Elapsed.TotalSeconds, bench.LostFocus, ctxChanged, pmLost, bench.AntiCheat));
+        if (!covered) invalid = (invalid == null ? "" : invalid + "; ") + "a captura começou depois do início da passada do mapa";
         extra["valida"] = invalid == null;
         extra["motivo_invalida"] = invalid;
 
