@@ -28,6 +28,9 @@ Versão pessoal do RESET EXPLODE, só para CS2 neste PC. Mede a estabilidade do 
 - **Thread principal do CS2** (diagnóstico profundo): quanto de um núcleo a thread mais ocupada do jogo usou em cada segundo (`threads.csv`).
   É a prova direta do limite de CPU que o uso por núcleo esconde.
 - A regra do Curve Optimizer passou a usar o clock efetivo de cada núcleo.
+- **Matriz**: + PASSOS DE VÍDEO lê o seu `cs2_video.txt` e cria um passo para cada opção que pesa na CPU (o app grava e REVERTER desfaz);
+  o passo "ram 3600" pede o roteiro de estabilidade antes (OC Profile, 30 min de stress de RAM, sem WHEA); gráfico do 1% low da linha de base no tempo.
+- **Comparar**: separa as execuções por versão do driver da GPU quando há mais de uma; **EXPORTAR CSV** com todas as execuções dos dois perfis.
 - **Apps pré-instalados** (Otimização): remove Clipchamp, Notícias, Clima, Xbox, Teams pessoal e afins só para o seu usuário, com reinstalação pela Store.
 
 **Sessões › Benchmark CS2**

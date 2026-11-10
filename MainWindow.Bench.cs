@@ -292,6 +292,8 @@ public partial class MainWindow
         foreach (var r in ra.Concat(rb).Where(x => !x.Valid))
             lines.Add($"inválida: {Path.GetFileName(r.Folder)} ({r.Invalid})");
 
+        lines.AddRange(DriverLines(a, ra));
+        lines.AddRange(DriverLines(b, rb));
         string? fa = ra.LastOrDefault(x => x.Valid)?.Folder, fb = rb.LastOrDefault(x => x.Valid)?.Folder;
         if (fa != null && fb != null)
         {
@@ -414,11 +416,33 @@ public partial class MainWindow
             ? $"Próximo: \"{c.Profile}\" — mude só isto: {c.Change}. (hipótese: {c.Hypothesis})"
             : "Matriz concluída. Use VALE COMPRAR? para a decisão de compra.";
         MatrixBaseline.Text = m.BaselineProfile != null ? $"Linha de base atual: \"{m.BaselineProfile}\"" : "Linha de base ainda não medida.";
+        DrawBaselineHistory();
     }
 
     private void BtnMatrixUse_Click(object sender, RoutedEventArgs e)
     {
-        if (ExperimentMatrix.Load().Current is not { } c) return;
+        var m = ExperimentMatrix.Load();
+        if (m.Current is not { } c) return;
+        if (c.Profile.Contains("ram 3600", StringComparison.OrdinalIgnoreCase) &&
+            MessageBox.Show(this, "Antes de medir a RAM a 3600:\n\n1. Salve um OC Profile na BIOS.\n2. Aplique 3600 MT/s com os timings.\n" +
+                                  "3. Rode o stress de RAM por 30 min (RESET DESEMPENHO › Stress test) sem nenhum erro.\n4. Confira em Overclock que não houve erro WHEA.\n\n" +
+                                  "Já fez os 4 passos?", "RAM a 3600", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes)
+        {
+            NavStress.IsChecked = true;
+            return;
+        }
+        if (c.Video is { Count: > 0 })
+        {
+            try
+            {
+                string path = Cs2Files.VideoPath() ?? throw new InvalidOperationException("não achei o cs2_video.txt");
+                var now = Cs2Files.ParseVideo(File.ReadAllText(path));
+                c.VideoBefore = c.Video.Keys.Where(now.ContainsKey).ToDictionary(k => k, k => now[k]);
+                Cs2VideoConfig.ApplyToFile(path, c.Video);
+                m.Save();
+            }
+            catch (Exception ex) { CsBenchStatus.Text = "Não gravei o vídeo: " + ex.Message; return; }
+        }
         SessProfile.Text = c.Profile;
         if (string.IsNullOrWhiteSpace(TxtBenchRepeat.Text)) TxtBenchRepeat.Text = ProfileComparer.MinRuns.ToString();
         CsBenchStatus.Text = $"Perfil \"{c.Profile}\" pronto. Faça a mudança ({c.Change}), abra o mapa e clique em CAPTURA CS2.";
@@ -439,5 +463,112 @@ public partial class MainWindow
                             MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
         ExperimentMatrix.Default().Save();
         RefreshMatrix();
+    }
+
+    private void BtnMatrixRevert_Click(object sender, RoutedEventArgs e)
+    {
+        var m = ExperimentMatrix.Load();
+        var step = m.Steps.Where(x => x.VideoBefore is { Count: > 0 } && x.Status is "perdeu" or "ruído" or "medindo").OrderByDescending(x => x.Order).FirstOrDefault();
+        if (step == null) { CsBenchStatus.Text = "Nada a reverter: os passos que não são de vídeo você desfaz à mão (o texto do passo diz o quê)."; return; }
+        try
+        {
+            string path = Cs2Files.VideoPath() ?? throw new InvalidOperationException("não achei o cs2_video.txt");
+            Cs2VideoConfig.ApplyToFile(path, step.VideoBefore!);
+            step.VideoBefore = null;
+            m.Save();
+            CsBenchStatus.Text = $"Vídeo do passo \"{step.Profile}\" revertido.";
+        }
+        catch (Exception ex) { CsBenchStatus.Text = "Não reverti: " + ex.Message; }
+    }
+
+    private void BtnMatrixVideo_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            string path = Cs2Files.VideoPath() ?? throw new InvalidOperationException("não achei o cs2_video.txt (abra o CS2 uma vez)");
+            var m = ExperimentMatrix.Load();
+            int n = m.AddVideoSteps(Cs2Files.ParseVideo(File.ReadAllText(path)));
+            m.Save();
+            RefreshMatrix();
+            CsBenchStatus.Text = n > 0 ? $"{n} passo(s) de vídeo entraram na matriz, antes das compras." : "Nenhuma opção de vídeo pesada para testar (ou já estão na matriz).";
+        }
+        catch (Exception ex) { CsBenchStatus.Text = ex.Message; }
+    }
+
+    // ------------------------------------------------------------------ dados: driver, exportar, histórico
+
+    /// <summary>Linhas "por versão do driver" de um perfil (só quando há mais de uma versão).</summary>
+    private static List<string> DriverLines(string profile, List<RunRecord> runs)
+    {
+        var groups = runs.Where(r => r.Valid && !r.WarmUp)
+            .GroupBy(r => SessionContext.Load(r.Folder)?.DriverGpu ?? "?").ToList();
+        if (groups.Count < 2) return new();
+        var lines = new List<string> { $"{profile} por versão do driver da GPU:" };
+        foreach (var g in groups)
+        {
+            var m = ProfileComparer.Summarize("1% low", g.Select(r => r.Low1Fps));
+            lines.Add($"  driver {g.Key}: 1% low {m.Median:0} [{m.Min:0}–{m.Max:0}] em {m.Runs} execução(ões)");
+        }
+        lines.Add("  Execuções com drivers diferentes no mesmo perfil misturam duas configurações: meça de novo com um só.");
+        return lines;
+    }
+
+    private void BtnExportCsv_Click(object sender, RoutedEventArgs e)
+    {
+        var profiles = new[] { CmbProfA.SelectedItem as string, CmbProfB.SelectedItem as string }.OfType<string>().Distinct().ToList();
+        if (profiles.Count == 0) { CsBenchStatus.Text = "Escolha os perfis."; return; }
+        try
+        {
+            var inv = System.Globalization.CultureInfo.InvariantCulture;
+            var sb = new System.Text.StringBuilder("perfil,sessao,valida,aquecimento,low_1pct,low_01pct,fps_medio,desvio_ms,quedas,alttab_ms,lat_tela_ms,lat_pc_ms,clique_ms,bios,driver,cs2_build,fps_max,motivo\n");
+            foreach (var p in profiles)
+                foreach (var r in SessionProfile.Runs(p))
+                {
+                    var c = SessionContext.Load(r.Folder);
+                    string Q(string? x) => "\"" + (x ?? "").Replace("\"", "'") + "\"";
+                    sb.Append(string.Join(',', new[]
+                    {
+                        Q(p), Q(Path.GetFileName(r.Folder)), r.Valid ? "1" : "0", r.WarmUp ? "1" : "0",
+                        r.Low1Fps.ToString("0.#", inv), r.Low01Fps.ToString("0.#", inv), r.AvgFps.ToString("0.#", inv), r.StdDevMs.ToString("0.###", inv),
+                        r.Drops.ToString(inv), r.AltTabMs.ToString("0", inv), r.DisplayLatMs.ToString("0.##", inv), r.PcLatMs.ToString("0.##", inv), r.ClickLatMs.ToString("0.##", inv),
+                        Q(c?.BiosVersao), Q(c?.DriverGpu), Q(c?.Cs2Build), Q(c?.Cs2FpsMax), Q(r.Invalid),
+                    })).Append('\n');
+                }
+            string dir = Path.Combine(AppSettings.Folder, "relatorios");
+            Directory.CreateDirectory(dir);
+            string path = Path.Combine(dir, $"{string.Join("_vs_", profiles)}_{DateTime.Now:yyyyMMdd_HHmmss}.csv");
+            File.WriteAllText(path, sb.ToString(), new System.Text.UTF8Encoding(true));
+            ShellRunner.OpenUrl(dir);
+            CsBenchStatus.Text = "CSV salvo em " + path;
+        }
+        catch (Exception ex) { CsBenchStatus.Text = "Não exportei: " + ex.Message; }
+    }
+
+    /// <summary>1% low de cada execução válida das linhas de base (a inicial e cada vencedora) ao longo do tempo.</summary>
+    private void DrawBaselineHistory()
+    {
+        BaselineChart.Children.Clear();
+        try
+        {
+            var m = ExperimentMatrix.Load();
+            var profiles = m.Steps.Where(x => x.Status is "base" or "venceu").Select(x => x.Profile).ToList();
+            var pts = profiles.SelectMany(p => SessionProfile.Runs(p).Where(r => r.Valid && !r.WarmUp)
+                              .Select(r => (When: Directory.GetCreationTime(r.Folder), r.Low1Fps)))
+                              .OrderBy(x => x.When).ToList();
+            BaselineHistoryLabel.Text = pts.Count < 2 ? "Histórico da linha de base: aparece com 2 ou mais execuções." :
+                $"Histórico da linha de base: 1% low de {pts.Min(x => x.Low1Fps):0} a {pts.Max(x => x.Low1Fps):0} fps em {pts.Count} execuções.";
+            if (pts.Count < 2) return;
+            double w = Math.Max(200, BaselineChart.ActualWidth), h = BaselineChart.Height;
+            double lo = pts.Min(x => x.Low1Fps) * 0.95, hi = pts.Max(x => x.Low1Fps) * 1.05;
+            var line = new System.Windows.Shapes.Polyline { StrokeThickness = 1.5 };
+            line.SetResourceReference(System.Windows.Shapes.Shape.StrokeProperty, "Fg");
+            for (int i = 0; i < pts.Count; i++)
+            {
+                double x = w * i / (pts.Count - 1), y = h - h * (pts[i].Low1Fps - lo) / Math.Max(1, hi - lo);
+                line.Points.Add(new Point(x, y));
+            }
+            BaselineChart.Children.Add(line);
+        }
+        catch (Exception ex) { ErrorReporter.Log("histórico", ex); }
     }
 }

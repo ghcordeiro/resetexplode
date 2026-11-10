@@ -18,6 +18,8 @@ public sealed class MatrixStep
     public string? Result { get; set; }
     /// <summary>Opções de vídeo do CS2 que o passo aplica (opcional; ideia 13).</summary>
     public Dictionary<string, string>? Video { get; set; }
+    /// <summary>Valores de vídeo de antes do passo, para REVERTER.</summary>
+    public Dictionary<string, string>? VideoBefore { get; set; }
 
     public bool Open => Status is "pendente" or "medindo";
     public string Line => $"{Mark} {Order}. {Profile} — {Change}" + (Result != null ? $"  ·  {Result}" : "");
@@ -65,6 +67,39 @@ public sealed class ExperimentMatrix
         S("32gb", "2x16 GB (só se \"vale comprar?\" disser que sim)", "quantidade de RAM", "compra");
         S("5500x3d", "troca do processador (só se \"vale comprar?\" disser que sim)", "cache L3", "compra");
         return m;
+    }
+
+    /// <summary>Opções de vídeo do CS2 que pesam na CPU, com o valor "mais leve". Só viram passo se a chave existe no cs2_video.txt deste PC
+    /// e o valor atual é outro (nome errado aqui só faz o passo não aparecer).</summary>
+    public static readonly (string Key, string Light, string Title)[] VideoCandidates =
+    {
+        ("setting.videocfg_dynamic_shadows", "0", "sombras dinâmicas desligadas (perde a sombra de inimigos)"),
+        ("setting.videocfg_particle_detail", "0", "detalhe de partículas no mínimo"),
+        ("setting.videocfg_shadow_quality", "0", "qualidade de sombras no mínimo"),
+        ("setting.videocfg_ao_detail", "0", "oclusão de ambiente desligada"),
+        ("setting.r_player_visibility_mode", "0", "Boost Player Contrast desligado (custa visibilidade; teste só pelo fps)"),
+        ("setting.shaderquality", "0", "qualidade de shaders baixa"),
+        ("setting.msaa_samples", "0", "MSAA desligado"),
+    };
+
+    /// <summary>Acrescenta (antes das compras) um passo para cada opção de vídeo que pode ficar mais leve. Devolve quantos entraram.</summary>
+    public int AddVideoSteps(IReadOnlyDictionary<string, string> video)
+    {
+        int added = 0;
+        foreach (var (key, light, title) in VideoCandidates)
+        {
+            if (!video.TryGetValue(key, out var cur) || cur == light) continue;
+            string profile = "video " + key.Replace("setting.", "").Replace("videocfg_", "").Replace('_', ' ');
+            if (Steps.Any(x => x.Profile.Equals(profile, StringComparison.OrdinalIgnoreCase))) continue;
+            Steps.Add(new MatrixStep { Profile = profile, Change = $"vídeo: {title} ({key} {cur} → {light}; o app grava)", Hypothesis = "vídeo que pesa na CPU",
+                                       Video = new() { [key] = light } });
+            added++;
+        }
+        // compras sempre por último
+        int order = 0;
+        foreach (var x in Steps.OrderBy(x => x.Kind == "compra" ? 1 : 0).ThenBy(x => x.Order)) x.Order = order++;
+        Steps = Steps.OrderBy(x => x.Order).ToList();
+        return added;
     }
 
     public MatrixStep? Current => Steps.Where(s => s.Open && s.Kind != "compra").OrderBy(s => s.Order).FirstOrDefault();
@@ -116,13 +151,13 @@ public sealed class ExperimentMatrix
             {
                 step.Status = "perdeu";
                 step.Result = $"1% low {pct}: reverta";
-                msg = $"Matriz: \"{step.Profile}\" ficou pior ({pct}). Reverta: {step.Change}.";
+                msg = $"Matriz: \"{step.Profile}\" ficou pior ({pct}). Reverta: {(step.VideoBefore != null ? "clique em REVERTER" : step.Change)}.";
             }
             else
             {
                 step.Status = "ruído";
                 step.Result = $"dentro do ruído ({pct}): reverta";
-                msg = $"Matriz: \"{step.Profile}\" ficou dentro do ruído. Reverta: {step.Change}.";
+                msg = $"Matriz: \"{step.Profile}\" ficou dentro do ruído. Reverta: {(step.VideoBefore != null ? "clique em REVERTER" : step.Change)}.";
             }
         }
         Save();

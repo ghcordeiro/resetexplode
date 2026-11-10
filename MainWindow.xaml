@@ -1318,8 +1318,14 @@
                                 <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
                                     <Button Style="{StaticResource PrimaryButton}" Content="USAR O PRÓXIMO PASSO" Padding="14,7" Margin="0,0,8,0" Click="BtnMatrixUse_Click"/>
                                     <Button Style="{StaticResource OutlineButton}" Content="PULAR" Padding="14,7" Margin="0,0,8,0" Click="BtnMatrixSkip_Click"/>
+                                    <Button Style="{StaticResource OutlineButton}" Content="REVERTER" Padding="14,7" Margin="0,0,8,0" Click="BtnMatrixRevert_Click"
+                                            ToolTip="Volta as opções de vídeo do último passo que perdeu ou ficou dentro do ruído."/>
+                                    <Button Style="{StaticResource OutlineButton}" Content="+ PASSOS DE VÍDEO" Padding="14,7" Margin="0,0,8,0" Click="BtnMatrixVideo_Click"
+                                            ToolTip="Lê o seu cs2_video.txt e acrescenta um passo para cada opção que pesa na CPU e pode ficar mais leve."/>
                                     <Button Style="{StaticResource OutlineButton}" Content="RECOMEÇAR" Padding="14,7" Click="BtnMatrixReset_Click"/>
                                 </StackPanel>
+                                <TextBlock x:Name="BaselineHistoryLabel" Foreground="{DynamicResource Muted}" FontSize="12" Margin="0,0,0,4"/>
+                                <Canvas x:Name="BaselineChart" Height="70" Margin="0,0,0,10" ClipToBounds="True"/>
                                 <ItemsControl x:Name="MatrixList">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
@@ -1347,6 +1353,7 @@
                                 <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
                                     <Button Style="{StaticResource PrimaryButton}" Content="COMPARAR" Padding="14,7" Margin="0,0,8,0" Click="BtnCompareProfiles_Click"/>
                                     <Button Style="{StaticResource OutlineButton}" Content="RELATÓRIO HTML" Padding="14,7" Margin="0,0,8,0" Click="BtnProfileReport_Click"/>
+                                    <Button Style="{StaticResource OutlineButton}" Content="EXPORTAR CSV" Padding="14,7" Margin="0,0,8,0" Click="BtnExportCsv_Click"/>
                                     <Button Style="{StaticResource OutlineButton}" Content="VALE COMPRAR?" Padding="14,7" Click="BtnPurchase_Click"
                                             ToolTip="Aplica as regras do PRD: 5500X3D só com CPU como limite e 1% low abaixo da taxa do monitor; 32 GB só se o perfil &quot;uso real&quot; enche a RAM ou pagina."/>
                                 </StackPanel>
