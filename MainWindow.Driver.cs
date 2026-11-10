@@ -76,6 +76,10 @@ public partial class MainWindow
         DrvBoard.Text = $"{b.Maker} {b.Model}\nBIOS: {(b.Bios.Length > 0 ? b.Bios : "—")}" +
                         (b.Brand.Length > 0 ? $"\nFabricante reconhecido: {b.Brand}" : "\nFabricante não reconhecido");
         BtnDrvBoardPage.IsEnabled = b.SupportUrl.Length > 0;
+        // BIOS antiga: AGESA velho tem o stutter do fTPM e correções de memória; atualizar é o passo 1 da matriz.
+        var dm = System.Text.RegularExpressions.Regex.Match(b.Bios, @"\((.+)\)\s*$");
+        if (dm.Success && DateTime.TryParse(dm.Groups[1].Value, out var biosDate) && (DateTime.Now - biosDate).TotalDays > 365)
+            DrvBoard.Text += $"\nA BIOS é de {biosDate:MM/yyyy}, há mais de um ano: confira a versão nova no suporte (salve um OC Profile antes de atualizar).";
     }
 
     private static void OpenUrl(string url)

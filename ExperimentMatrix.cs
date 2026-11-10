@@ -62,6 +62,8 @@ public sealed class ExperimentMatrix
         S("gsync reflex", "G-Sync + V-Sync no driver (Biblioteca › NVIDIA) + Reflex no jogo, sem fps_max", "fps sem limite");
         S("co -15", "Curve Optimizer -15 e boost +100 MHz", "clock stretching com -20");
         S("rebar", "Above 4G Decoding e Re-Size BAR ligados na BIOS", "ganho de GPU");
+        S("dynamic tick", "Otimização › ligue \"Experimento: desligar o dynamic tick\" e reinicie", "timer do sistema");
+        S("prioridade 0x26", "Otimização › ligue \"Experimento: prioridade do programa em primeiro plano\"", "agendamento do Windows");
         S("ram 3600", "RAM a 3600 MT/s com timings ajustados, depois de 30 min de stress de RAM sem erro", "latência da RAM");
         S("uso real", "o melhor perfil até aqui, com os programas do dia a dia abertos (Discord em call, navegador)", "quantidade de RAM", "info");
         S("32gb", "2x16 GB (só se \"vale comprar?\" disser que sim)", "quantidade de RAM", "compra");
@@ -102,6 +104,27 @@ public sealed class ExperimentMatrix
         return added;
     }
 
+    /// <summary>
+    /// Fase de descoberta do Curve Optimizer, com a Integridade de Memória desligada (sem FACEIT): os passos se comparam só entre si, com o
+    /// primeiro (-20, o valor atual) como referência. O vencedor vai para a BIOS à mão; depois religue a Integridade e meça a linha de base de novo.
+    /// </summary>
+    public int AddCurveDiscovery()
+    {
+        int added = 0;
+        foreach (var co in new[] { -20, -15, -10 })
+        {
+            string profile = $"descoberta co {co}";
+            if (Steps.Any(x => x.Profile == profile)) continue;
+            Steps.Add(new MatrixStep { Profile = profile, Kind = "descoberta", Hypothesis = "Curve Optimizer ideal",
+                Change = $"Curve Optimizer {co} em todos os núcleos pelo PBO2 Tuner ou Ryzen Master (Integridade de Memória desligada, FACEIT fechada)" });
+            added++;
+        }
+        int order = 0;
+        foreach (var x in Steps.OrderBy(x => x.Kind == "compra" ? 1 : 0).ThenBy(x => x.Order)) x.Order = order++;
+        Steps = Steps.OrderBy(x => x.Order).ToList();
+        return added;
+    }
+
     public MatrixStep? Current => Steps.Where(s => s.Open && s.Kind != "compra").OrderBy(s => s.Order).FirstOrDefault();
 
     /// <summary>Reavalia o passo do perfil (chamado depois de cada captura). Devolve a frase para a tela, ou null se o perfil não é da matriz.</summary>
@@ -120,6 +143,27 @@ public sealed class ExperimentMatrix
         }
 
         string msg;
+        if (step.Kind == "descoberta")
+        {
+            var first = Steps.Where(x => x.Kind == "descoberta").OrderBy(x => x.Order).First();
+            if (first == step)
+            {
+                step.Status = "base";
+                step.Result = "referência da descoberta";
+                msg = $"Matriz: referência da descoberta medida (\"{step.Profile}\").";
+            }
+            else
+            {
+                var rowsD = ProfileComparer.CompareRuns(SessionProfile.Runs(first.Profile), runs);
+                var lowD = rowsD[0];
+                string pctD = lowD.DiffPct.ToString("+0.#;-0.#;0", CultureInfo.InvariantCulture) + "%";
+                step.Status = lowD.Verdict == Verdict.Better ? "venceu" : lowD.Verdict == Verdict.Worse ? "perdeu" : "ruído";
+                step.Result = $"1% low {pctD} contra \"{first.Profile}\"" + (step.Status == "venceu" ? ": candidato para gravar na BIOS" : "");
+                msg = $"Matriz (descoberta): \"{step.Profile}\" {step.Result}. Ao terminar, grave o vencedor na BIOS, religue a Integridade de Memória e meça a linha de base de novo.";
+            }
+            Save();
+            return msg + (Current is { } nx ? $" Próximo: \"{nx.Profile}\"." : "");
+        }
         if (step.Kind == "base" || BaselineProfile == null)
         {
             BaselineProfile = step.Profile;

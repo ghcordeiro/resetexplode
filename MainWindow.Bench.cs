@@ -571,4 +571,18 @@ public partial class MainWindow
         }
         catch (Exception ex) { ErrorReporter.Log("histórico", ex); }
     }
+
+    private void BtnMatrixCo_Click(object sender, RoutedEventArgs e)
+    {
+        if (MessageBox.Show(this, "Descoberta do Curve Optimizer:\n\n• Desligue a Integridade de Memória (Segurança do Windows › Isolamento de núcleo) e reinicie.\n" +
+                                  "• Não abra a FACEIT nessa fase (o app avisa se ela abrir com a Integridade desligada).\n" +
+                                  "• Aplique cada valor pelo PBO2 Tuner ou Ryzen Master, sem reiniciar entre eles, e meça.\n" +
+                                  "• Os números dessa fase só valem entre si. No fim: grave o vencedor na BIOS, religue a Integridade, reinicie e meça a linha de base de novo.\n\n" +
+                                  "Acrescentar os passos -20, -15 e -10 à matriz?", "Descoberta do CO", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
+        var m = ExperimentMatrix.Load();
+        int n = m.AddCurveDiscovery();
+        m.Save();
+        RefreshMatrix();
+        CsBenchStatus.Text = n > 0 ? $"{n} passo(s) de descoberta na matriz." : "Os passos de descoberta já estão na matriz.";
+    }
 }

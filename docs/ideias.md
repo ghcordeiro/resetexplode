@@ -63,5 +63,19 @@ normal. A atualização de BIOS apaga as configurações: salvar antes em OC Pro
 
 ## Feito
 
+Plano: `docs/superpowers/plans/2026-11-11-ideias.md`.
+
+- 1 Teste de ruído e captura em série · 2 Matriz guiada · 3 Causa de cada queda · 4 Thread principal (diagnóstico profundo) · 5 Paginação · 6 Vale comprar?
+- 8 Linha de base vencida · 9 Timer e interrupções (leitura) · 10 Clock efetivo · 11 Driver por execução · 12 Exportar CSV · 13 Passos de vídeo
+- 14 Histórico da linha de base · 15 Roteiro da RAM a 3600 · 16 Modo CS automático · 17 Overlays · 18 Apps pré-instalados · 19 Experimentos de sistema
+- 20 Descoberta do CO como roteiro (a linha de comando do PBO2 Tuner não está documentada; o app não aplica o valor sozinho)
+- 22 Aviso de BIOS com mais de um ano (a MSI não tem API de versões; a página de suporte já abre em Drivers)
+
+## Pendente
+
+- 7 Início automático da passada do mapa: precisa de um `console.log` real.
+- 20 Aplicar o CO sozinho: precisa da sintaxe da linha de comando do PBO2 Tuner (rode `"PBO2 Tuner.exe" /?` ou veja o tópico do PJVol no overclock.net e me mande).
+- 21 Timings reais da RAM: ler o controlador de memória exige driver de kernel; nada confiável encontrado. Continua no PERFIL MANUAL (copie do ZenTimings).
+
 - Latência (até a tela, do PC, clique até a imagem) na comparação de perfis.
 - Instalador, atualização automática e relatos de problema como issues.

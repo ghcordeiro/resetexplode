@@ -19,8 +19,26 @@ public partial class MainWindow
         _gmTimer.Start();
     }
 
+    private int _faceitTicks;
+    private bool _faceitSeen;
+
+    /// <summary>A cada 10 s: se a FACEIT abriu com a Integridade de Memória desligada (fase de descoberta do CO), avisa para ligar e reiniciar.</summary>
+    private async void FaceitHvciCheck()
+    {
+        if (++_faceitTicks % 5 != 0) return;
+        bool running = await Task.Run(() => AntiCheatGuard.IsRunning());
+        if (running && !_faceitSeen)
+        {
+            bool? hvci = await Task.Run(SystemTimers.HvciRunning);
+            if (hvci == false)
+                Toast("FACEIT aberta", "A Integridade de Memória está DESLIGADA. Ligue em Segurança do Windows › Isolamento de núcleo e reinicie antes de jogar.", "\uE7BA");
+        }
+        _faceitSeen = running;
+    }
+
     private async void GameModeTick()
     {
+        FaceitHvciCheck();
         if (_gmBusy) return;
         var o = _settings.GameMode;
         int pid = 0;

@@ -39,7 +39,7 @@ public static class CsProfile
     };
 
     /// <summary>Ajustes do Windows que ficam fora do APLICAR TUDO por serem experimentos a medir no benchmark, não ganhos garantidos.</summary>
-    public static readonly string[] ExperimentOnly = { "hags" };
+    public static readonly string[] ExperimentOnly = { "hags", "exp.dynamictick", "exp.prio" };
 
     static CsProfile()
     {
@@ -101,6 +101,8 @@ public static class CsProfile
         NicTweak(),
         TasksTweak(),
         StartupTweak(),
+        SystemTimers.DynamicTick(),
+        SystemTimers.PrioritySeparation(),
     };
 
     // ------------------------------------------------------------------ itens

@@ -30,6 +30,11 @@ Versão pessoal do RESET EXPLODE, só para CS2 neste PC. Mede a estabilidade do 
 - A regra do Curve Optimizer passou a usar o clock efetivo de cada núcleo.
 - **Matriz**: + PASSOS DE VÍDEO lê o seu `cs2_video.txt` e cria um passo para cada opção que pesa na CPU (o app grava e REVERTER desfaz);
   o passo "ram 3600" pede o roteiro de estabilidade antes (OC Profile, 30 min de stress de RAM, sem WHEA); gráfico do 1% low da linha de base no tempo.
+- **Timer e interrupções** (Otimização): diagnóstico de HPET forçado, dynamic tick, modo MSI da GPU e da rede e BitLocker. Dois experimentos
+  (desligar o dynamic tick e Win32PrioritySeparation 0x26) entraram nos ajustes e na matriz; ficam fora do APLICAR PC DE CS e o do bcdedit é bloqueado com BitLocker.
+- **Descoberta do Curve Optimizer** (matriz): passos -20/-15/-10 para medir com a Integridade de Memória desligada, comparados só entre si.
+  Se a FACEIT abrir com a Integridade desligada, o app avisa para ligar e reiniciar.
+- **Drivers**: avisa quando a BIOS tem mais de um ano.
 - **Comparar**: separa as execuções por versão do driver da GPU quando há mais de uma; **EXPORTAR CSV** com todas as execuções dos dois perfis.
 - **Apps pré-instalados** (Otimização): remove Clipchamp, Notícias, Clima, Xbox, Teams pessoal e afins só para o seu usuário, com reinstalação pela Store.
 

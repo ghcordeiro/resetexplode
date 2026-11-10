@@ -1322,6 +1322,8 @@
                                             ToolTip="Volta as opções de vídeo do último passo que perdeu ou ficou dentro do ruído."/>
                                     <Button Style="{StaticResource OutlineButton}" Content="+ PASSOS DE VÍDEO" Padding="14,7" Margin="0,0,8,0" Click="BtnMatrixVideo_Click"
                                             ToolTip="Lê o seu cs2_video.txt e acrescenta um passo para cada opção que pesa na CPU e pode ficar mais leve."/>
+                                    <Button Style="{StaticResource OutlineButton}" Content="+ DESCOBERTA DO CO" Padding="14,7" Margin="0,0,8,0" Click="BtnMatrixCo_Click"
+                                            ToolTip="Passos para achar o Curve Optimizer ideal sem reiniciar: Integridade de Memória desligada e FACEIT fechada só nessa fase; os passos se comparam entre si."/>
                                     <Button Style="{StaticResource OutlineButton}" Content="RECOMEÇAR" Padding="14,7" Click="BtnMatrixReset_Click"/>
                                 </StackPanel>
                                 <TextBlock x:Name="BaselineHistoryLabel" Foreground="{DynamicResource Muted}" FontSize="12" Margin="0,0,0,4"/>
@@ -1863,6 +1865,27 @@
                                     <Button Style="{StaticResource OutlineButton}" Content="REINSTALAR PELA STORE" Padding="14,7" Click="BtnBloatRestore_Click"/>
                                 </StackPanel>
                                 <TextBlock x:Name="BloatStatus" TextWrapping="Wrap" FontWeight="SemiBold" Margin="0,8,0,0"/>
+                            </StackPanel>
+                        </Border>
+                        <!-- Timer e interrupções -->
+                        <Border Style="{StaticResource CardBorder}" Margin="0,14,0,0">
+                            <StackPanel>
+                                <Grid Margin="0,0,0,6">
+                                    <TextBlock Text="TIMER E INTERRUPÇÕES" Style="{StaticResource Label}"/>
+                                    <Button Style="{StaticResource OutlineButton}" Content="VERIFICAR" Padding="10,4" FontSize="11"
+                                            HorizontalAlignment="Right" VerticalAlignment="Top" Click="BtnTimers_Click"/>
+                                </Grid>
+                                <TextBlock Foreground="{DynamicResource Faint}" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,8">
+                                    Só leitura: HPET forçado, dynamic tick, modo de interrupção da placa de vídeo e da rede e BitLocker. Configuração errada aqui causa travadas
+                                    periódicas. Os dois experimentos (dynamic tick e prioridade) ficam na lista de ajustes acima e são passos da matriz.
+                                </TextBlock>
+                                <ItemsControl x:Name="TimerLines">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding}" TextWrapping="Wrap" FontSize="12" Margin="0,0,0,4"/>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
                             </StackPanel>
                         </Border>
                         <!-- OPT-END -->

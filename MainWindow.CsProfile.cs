@@ -122,4 +122,11 @@ public partial class MainWindow
         try { System.IO.File.WriteAllText(System.IO.Path.Combine(AppSettings.Folder, "debloat-removidos.json"), System.Text.Json.JsonSerializer.Serialize(removed)); } catch { }
         BloatStatus.Text = $"Store aberta em \"{pick.Value}\": clique em Obter. Faltam {removed.Count}.";
     }
+
+    private async void BtnTimers_Click(object sender, RoutedEventArgs e)
+    {
+        TimerLines.ItemsSource = new[] { "Lendo…" };
+        try { TimerLines.ItemsSource = await Task.Run(SystemTimers.Diagnose); }
+        catch (Exception ex) { TimerLines.ItemsSource = new[] { "Falhou: " + ex.Message }; }
+    }
 }
