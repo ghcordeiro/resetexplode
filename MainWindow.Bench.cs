@@ -166,6 +166,7 @@ public partial class MainWindow
 
         _benchProfile = profile;
         _benchWarmup = ChkBenchWarmup.IsChecked == true;
+        ChkBenchWarmup.IsChecked = false; // vale só para esta captura: esquecida marcada, todas as seguintes ficavam de fora da comparação
         _benchAltTab = ChkBenchAltTab.IsChecked == true;
         _benchLostFocus = false;
         _benchVProf = null;
