@@ -31,6 +31,17 @@ espera (como o ISLC), fechar programas e troca da área de trabalho para 1280x96
 (quebram atualização e anti-cheat), ajustes de rede como TcpAckFrequency/Nagle (o CS2 usa UDP), "limpadores de RAM" que esvaziam a memória dos
 programas o tempo todo (pioram), e afinidade de núcleos no 5700X (um CCD só, sem ganho).
 
+## BIOS sem reiniciar
+
+| # | Ideia | Por que importa | Esforço |
+| --- | --- | --- | --- |
+| 20 | **Fase de descoberta do Curve Optimizer** — com a Integridade de Memória desligada só durante essa fase, o app aplica o CO de cada perfil pelo PBO2 Tuner (linha de comando), mede e compara. O valor vencedor vai para a BIOS à mão, a Integridade volta a ligar e a linha de base é medida de novo | Testa -20, -15, -10 e por núcleo sem reiniciar a cada mudança | M |
+| 21 | **Ler timings reais da RAM** (estilo ZenTimings) para preencher o perfil manual sozinho | Só leitura; tira digitação e erro | M |
+| 22 | **Aviso de BIOS nova** para a MSI B550 | Atualização continua manual (M-Flash), mas o app avisa | P |
+
+Cuidados: com a Integridade desligada o próprio Windows fica mais rápido, então os números dessa fase não valem para comparar com a linha de base
+normal. A atualização de BIOS apaga as configurações: salvar antes em OC Profiles.
+
 ## Prioridade média
 
 | # | Ideia | Por que importa | Esforço |
